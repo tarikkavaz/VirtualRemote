@@ -16,3 +16,6 @@ VirtualRemote-Package */
 # Local dev artefacts
 *.log
 .env
+
+# mkdown artifacts (auto-managed)
+README.html
