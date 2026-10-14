@@ -17,11 +17,17 @@ struct KeychainKeyStore {
         return PairingKey(data: data)
     }
 
+    /// Updates the item in place when it exists, so macOS keeps its access list
+    /// (and the "Always Allow" choice) instead of seeing a brand new item.
     func save(_ key: PairingKey, account: String) throws {
-        delete(account: account)
-        var query = base(account)
-        query[kSecValueData as String] = key.data
-        let status = SecItemAdd(query as CFDictionary, nil)
+        var status = SecItemUpdate(
+            base(account) as CFDictionary,
+            [kSecValueData as String: key.data] as CFDictionary)
+        if status == errSecItemNotFound {
+            var query = base(account)
+            query[kSecValueData as String] = key.data
+            status = SecItemAdd(query as CFDictionary, nil)
+        }
         guard status == errSecSuccess else {
             throw NSError(domain: NSOSStatusErrorDomain, code: Int(status))
         }

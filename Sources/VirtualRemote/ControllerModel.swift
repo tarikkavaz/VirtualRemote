@@ -9,6 +9,8 @@ final class ControllerModel {
     enum Connection: Equatable {
         case idle
         case connecting
+        /// No answer within the connect timeout; often macOS blocking Local Network access.
+        case timedOut
         case connected
         case failed(String)
     }
@@ -124,10 +126,7 @@ final class ControllerModel {
                 return
             } catch is ConnectTimeout {
                 client.close()
-                connection = .failed(
-                    "No answer after 10 s. Check that the receiver is running and that "
-                        + "Local Network access is allowed in System Settings > Privacy & Security."
-                )
+                connection = .timedOut
             } catch {
                 connection = .failed("Could not connect. Check the pairing key.")
             }

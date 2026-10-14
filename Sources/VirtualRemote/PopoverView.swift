@@ -126,6 +126,16 @@ private struct StatusView: View {
         Group {
             switch model.connection {
             case .connecting: Text("Connecting…")
+            case .timedOut:
+                VStack(spacing: 6) {
+                    Text(
+                        "No answer after 10 s. Check that the receiver is running and that "
+                            + "VirtualRemote is allowed to use the local network."
+                    )
+                    .multilineTextAlignment(.center)
+                    Button("Open Local Network settings") { PrivacyLinks.openLocalNetwork() }
+                        .buttonStyle(.link)
+                }
             case .failed(let reason): Text(reason)
             case .idle:
                 Text(model.selected == nil ? "Pick a receiver." : "Not connected.")
@@ -156,6 +166,9 @@ private struct PairingForm: View {
             }
             Button("Pair", action: submit)
                 .keyboardShortcut(.defaultAction)
+            Text("macOS may ask for access to your Keychain. Choose Always Allow so it does not ask again.")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
         }
     }
 

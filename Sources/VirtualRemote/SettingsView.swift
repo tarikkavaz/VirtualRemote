@@ -143,6 +143,11 @@ struct ReceiverSection: View {
     var body: some View {
         Section("Receiver") {
             ReceiverStatusLines(model: model)
+            Button("Controllers cannot connect? Open Local Network settings") {
+                PrivacyLinks.openLocalNetwork()
+            }
+            .buttonStyle(.link)
+            .font(.caption)
         }
         Section("Receiver pairing key") {
             Text("Enter this key once on the controller.")
@@ -193,6 +198,9 @@ private struct ControllerKeySection: View {
                     Spacer()
                     Button("Forget key", role: .destructive) { model.forgetSelected() }
                 }
+                Text("macOS may ask for access to your Keychain. Choose Always Allow so it does not ask again.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             } else {
                 Text("Pick a receiver in the menu bar popover first.")
                     .foregroundStyle(.secondary)
