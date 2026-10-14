@@ -11,8 +11,14 @@ struct VirtualRemoteApp: App {
     }
 
     var body: some Scene {
-        MenuBarExtra("Virtual Remote", systemImage: "appletvremote.gen4.fill") {
+        MenuBarExtra {
             PopoverView(app: app)
+        } label: {
+            if let icon = MenuBarIcon.image {
+                Image(nsImage: icon)
+            } else {
+                Image(systemName: "appletvremote.gen4.fill")
+            }
         }
         .menuBarExtraStyle(.window)
 
