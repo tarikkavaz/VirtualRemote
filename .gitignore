@@ -7,6 +7,9 @@ DerivedData/
 *.xcworkspace/xcuserdata/
 xcuserdata/
 
+# Xcode package exports (Product > Archive / Build for the package)
+VirtualRemote-Package */
+
 # macOS
 .DS_Store
 
