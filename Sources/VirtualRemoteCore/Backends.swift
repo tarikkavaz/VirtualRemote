@@ -5,6 +5,7 @@ public enum MediaCommand: Int, Sendable {
     case play = 0
     case pause = 1
     case togglePlayPause = 2
+    case stop = 3
     case next = 4
     case previous = 5
 }

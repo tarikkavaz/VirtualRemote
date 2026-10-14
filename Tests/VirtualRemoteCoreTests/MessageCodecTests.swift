@@ -6,6 +6,7 @@ import Testing
     @Test(arguments: [
         RemoteMessage.command(.play),
         .command(.togglePlayPause),
+        .command(.stop),
         .command(.skip(seconds: -10)),
         .command(.setVolume(0.35)),
         .command(.setMuted(true)),

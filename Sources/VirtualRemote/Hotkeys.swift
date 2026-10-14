@@ -13,6 +13,7 @@ extension KeyboardShortcuts.Name {
     static let forward20 = Self("forward20", default: .init(.rightArrow, modifiers: hyperShift))
     static let volumeUp = Self("volumeUp", default: .init(.upArrow, modifiers: hyper))
     static let volumeDown = Self("volumeDown", default: .init(.downArrow, modifiers: hyper))
+    static let stop = Self("stop", default: .init(.s, modifiers: hyper))
     static let previous = Self("previous", default: .init(.comma, modifiers: hyper))
     static let next = Self("next", default: .init(.period, modifiers: hyper))
 }
@@ -27,6 +28,7 @@ enum Hotkeys {
         (.forward10, "Forward 10 s"),
         (.back20, "Back 20 s"),
         (.forward20, "Forward 20 s"),
+        (.stop, "Stop"),
         (.previous, "Previous"),
         (.next, "Next"),
         (.volumeUp, "Volume up"),
@@ -44,6 +46,7 @@ enum Hotkeys {
         on(.forward10, .skip(seconds: 10))
         on(.back20, .skip(seconds: -20))
         on(.forward20, .skip(seconds: 20))
+        on(.stop, .stop)
         on(.previous, .previous)
         on(.next, .next)
         on(.volumeUp, .adjustVolume(volumeStep))

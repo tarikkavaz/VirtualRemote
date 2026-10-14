@@ -99,6 +99,43 @@ import Testing
     }
 
     @Test(.timeLimit(.minutes(1)))
+    func artworkArrivesOnceBeforeStateAndNotInsideIt() async throws {
+        let rig = try await startServer()
+        defer { rig.server.stop() }
+        var withArt = info
+        withArt.artworkData = makePNG(width: 800, height: 800)
+        await rig.player.setInfoForTest(withArt)
+
+        let client = RemoteClient(host: "127.0.0.1", port: rig.port, key: rig.key)
+        defer { client.close() }
+        try await client.connect()
+        var it = client.messages.makeAsyncIterator()
+
+        guard case .artwork(let artwork) = try await it.next() else {
+            Issue.record("artwork must come first")
+            return
+        }
+        #expect(!artwork.jpeg.isEmpty)
+        guard case .state(let state) = try await it.next() else {
+            Issue.record("state must follow the artwork")
+            return
+        }
+        #expect(state.nowPlaying?.artworkID == artwork.id)
+        #expect(state.nowPlaying?.artworkData == nil)
+
+        // A later state change must not resend the same artwork.
+        await rig.volume.setLevelForTest(0.9)
+        while let message = try await it.next() {
+            if case .artwork = message {
+                Issue.record("artwork was sent twice")
+                return
+            }
+            if case .state(let s) = message, s.volume == 0.9 { return }
+        }
+        Issue.record("stream ended early")
+    }
+
+    @Test(.timeLimit(.minutes(1)))
     func failedCommandReportsError() async throws {
         let rig = try await startServer()
         await rig.player.setInfoForTest(nil)

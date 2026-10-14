@@ -2,18 +2,17 @@ import SwiftUI
 
 @main
 struct VirtualRemoteApp: App {
-    @State private var model: ControllerModel
+    @State private var app: AppModel
 
     init() {
-        let model = ControllerModel()
-        _model = State(initialValue: model)
-        Hotkeys.bind(to: model)
-        model.startBrowsing()
+        let app = AppModel()
+        _app = State(initialValue: app)
+        Hotkeys.bind(to: app.controller)
     }
 
     var body: some Scene {
         MenuBarExtra("Virtual Remote", systemImage: "appletvremote.gen4.fill") {
-            PopoverView(model: model)
+            PopoverView(app: app)
         }
         .menuBarExtraStyle(.window)
 

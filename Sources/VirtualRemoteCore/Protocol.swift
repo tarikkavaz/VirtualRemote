@@ -5,6 +5,7 @@ public enum RemoteCommand: Codable, Equatable, Sendable {
     case play
     case pause
     case togglePlayPause
+    case stop
     case next
     case previous
     /// Relative seek. Negative = back.
@@ -27,6 +28,16 @@ public struct NowPlayingInfo: Codable, Equatable, Sendable {
     public var duration: Double?
     public var playbackRate: Double?
     public var timestamp: Date?
+    /// Id of the thumbnail the receiver sent as a separate `artwork` message.
+    public var artworkID: String?
+    /// Raw image from the adapter. Receiver-side only: never encoded, so it
+    /// cannot end up inside state messages.
+    public var artworkData: Data?
+
+    private enum CodingKeys: String, CodingKey {
+        case bundleIdentifier, title, artist, playing, elapsedTime, duration
+        case playbackRate, timestamp, artworkID
+    }
 
     public init(
         bundleIdentifier: String,
@@ -36,8 +47,12 @@ public struct NowPlayingInfo: Codable, Equatable, Sendable {
         elapsedTime: Double? = nil,
         duration: Double? = nil,
         playbackRate: Double? = nil,
-        timestamp: Date? = nil
+        timestamp: Date? = nil,
+        artworkID: String? = nil,
+        artworkData: Data? = nil
     ) {
+        self.artworkID = artworkID
+        self.artworkData = artworkData
         self.bundleIdentifier = bundleIdentifier
         self.title = title
         self.artist = artist
@@ -71,9 +86,21 @@ public struct RemoteState: Codable, Equatable, Sendable {
     }
 }
 
+/// Downscaled JPEG thumbnail, sent once per controller before the state that references it.
+public struct Artwork: Codable, Equatable, Sendable {
+    public var id: String
+    public var jpeg: Data
+
+    public init(id: String, jpeg: Data) {
+        self.id = id
+        self.jpeg = jpeg
+    }
+}
+
 public enum RemoteMessage: Codable, Equatable, Sendable {
     case command(RemoteCommand)
     case state(RemoteState)
+    case artwork(Artwork)
     /// Receiver could not run a command.
     case error(String)
 }

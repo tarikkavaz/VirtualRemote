@@ -10,6 +10,7 @@ public final class RemoteServer: @unchecked Sendable {
     private let advertise: Bool
     private let pollInterval: Duration
     private let registry = ClientRegistry()
+    private let artworkCache = ArtworkCache()
     private let queue = DispatchQueue(label: "virtualremote.server")
     private let lock = NSLock()
     private var listener: NWListener?
@@ -78,8 +79,8 @@ public final class RemoteServer: @unchecked Sendable {
             return  // handshake failed: wrong key or dropped connection
         }
         let id = await registry.add(channel)
-        if let state = try? await executor.currentState() {
-            try? await channel.send(.state(state))
+        if let (state, artwork) = await snapshot() {
+            await registry.deliver(to: id, state: state, artwork: artwork)
         }
         // Reader and runner are separate so reading never waits on slow
         // commands, and queued volume changes can be merged.
@@ -111,9 +112,21 @@ public final class RemoteServer: @unchecked Sendable {
         channel.close()
     }
 
+    /// Current state with the raw image replaced by a thumbnail id, plus the thumbnail.
+    private func snapshot() async -> (RemoteState, Artwork?)? {
+        guard var state = try? await executor.currentState() else { return nil }
+        var artwork: Artwork?
+        if let raw = state.nowPlaying?.artworkData {
+            artwork = await artworkCache.resolve(raw)
+            state.nowPlaying?.artworkID = artwork?.id
+        }
+        state.nowPlaying?.artworkData = nil
+        return (state, artwork)
+    }
+
     private func publish(force: Bool) async {
-        guard let state = try? await executor.currentState() else { return }
-        await registry.broadcast(state, force: force)
+        guard let (state, artwork) = await snapshot() else { return }
+        await registry.broadcast(state, artwork: artwork, force: force)
     }
 
     private func pollLoop() async {
@@ -127,33 +140,48 @@ public final class RemoteServer: @unchecked Sendable {
 }
 
 actor ClientRegistry {
-    private var channels: [UUID: SecureChannel] = [:]
+    private struct Client {
+        let channel: SecureChannel
+        var sentArtwork: Set<String> = []
+    }
+
+    private var clients: [UUID: Client] = [:]
     private var last: RemoteState?
 
-    var hasClients: Bool { !channels.isEmpty }
+    var hasClients: Bool { !clients.isEmpty }
 
     func add(_ channel: SecureChannel) -> UUID {
         let id = UUID()
-        channels[id] = channel
+        clients[id] = Client(channel: channel)
         return id
     }
 
     func remove(_ id: UUID) {
-        channels[id] = nil
-        if channels.isEmpty { last = nil }
+        clients[id] = nil
+        if clients.isEmpty { last = nil }
     }
 
-    func broadcast(_ state: RemoteState, force: Bool) async {
+    func broadcast(_ state: RemoteState, artwork: Artwork?, force: Bool) async {
         guard force || state != last else { return }
         last = state
-        for channel in channels.values {
-            try? await channel.send(.state(state))
+        for id in Array(clients.keys) {
+            await deliver(to: id, state: state, artwork: artwork)
         }
     }
 
+    /// Sends the thumbnail first if this controller has not got it yet, then the state.
+    func deliver(to id: UUID, state: RemoteState, artwork: Artwork?) async {
+        guard let client = clients[id] else { return }
+        if let artwork, !client.sentArtwork.contains(artwork.id) {
+            try? await client.channel.send(.artwork(artwork))
+            clients[id]?.sentArtwork.insert(artwork.id)
+        }
+        try? await client.channel.send(.state(state))
+    }
+
     func closeAll() {
-        for channel in channels.values { channel.close() }
-        channels.removeAll()
+        for client in clients.values { client.channel.close() }
+        clients.removeAll()
         last = nil
     }
 }

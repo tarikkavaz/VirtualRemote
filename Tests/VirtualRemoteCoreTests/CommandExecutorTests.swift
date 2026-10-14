@@ -32,9 +32,11 @@ import Testing
         try await exec.execute(.play)
         try await exec.execute(.pause)
         try await exec.execute(.togglePlayPause)
+        try await exec.execute(.stop)
         try await exec.execute(.next)
         try await exec.execute(.previous)
-        #expect(await player.sent == [.play, .pause, .togglePlayPause, .next, .previous])
+        #expect(await player.sent == [.play, .pause, .togglePlayPause, .stop, .next, .previous])
+        #expect(MediaCommand.stop.rawValue == 3)  // adapter id for kMRStop
     }
 
     @Test func skipForwardAddsToElapsed() async throws {

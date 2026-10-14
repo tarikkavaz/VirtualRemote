@@ -3,15 +3,108 @@ import VirtualRemoteCore
 
 struct PopoverView: View {
     @Environment(\.openWindow) private var openWindow
+    @State private var showSettings = false
+    let app: AppModel
+
+    var body: some View {
+        VStack(spacing: 12) {
+            header
+            if app.mode.isController {
+                ControllerSection(model: app.controller)
+            }
+            if app.mode == .both { Divider() }
+            if app.mode.isReceiver {
+                ReceiverSection(model: app.receiver)
+            }
+        }
+        .padding(16)
+        .frame(width: 300)
+    }
+
+    private var header: some View {
+        HStack(spacing: 8) {
+            if app.mode.isController {
+                ReceiverPicker(model: app.controller)
+            } else {
+                Label("Virtual Remote", systemImage: "appletvremote.gen4.fill")
+                    .font(.headline)
+                Spacer()
+            }
+            Button { showSettings.toggle() } label: {
+                Image(systemName: showSettings ? "gearshape.fill" : "gearshape")
+            }
+            .buttonStyle(.plain)
+            .help("Settings")
+            // Own popover instead of inline content, so the main window never resizes.
+            .popover(isPresented: $showSettings, arrowEdge: .bottom) {
+                footer
+                    .padding(16)
+                    .frame(width: 280)
+            }
+        }
+    }
+
+    private var footer: some View {
+        VStack(spacing: 8) {
+            HStack {
+                Text("Mode").font(.caption).foregroundStyle(.secondary)
+                Picker("Mode", selection: modeBinding) {
+                    ForEach(AppMode.allCases, id: \.self) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+            }
+            Toggle("Launch at login", isOn: loginBinding)
+                .toggleStyle(.checkbox)
+                .font(.caption)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            if let error = app.launchAtLoginError {
+                Text(error)
+                    .font(.caption2)
+                    .foregroundStyle(.red)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            HStack {
+                if app.mode.isController {
+                    Button("Hotkeys…") {
+                        openWindow(id: "hotkeys")
+                        NSApp.activate()
+                    }
+                    if app.controller.selected != nil {
+                        Button("Forget key") { app.controller.forgetSelected() }
+                    }
+                }
+                Spacer()
+                Button("Quit") { NSApp.terminate(nil) }
+            }
+            .buttonStyle(.link)
+            .font(.caption)
+        }
+    }
+
+    private var modeBinding: Binding<AppMode> {
+        Binding(get: { app.mode }, set: { app.setMode($0) })
+    }
+
+    private var loginBinding: Binding<Bool> {
+        Binding(get: { app.launchAtLogin }, set: { app.setLaunchAtLogin($0) })
+    }
+}
+
+private struct ControllerSection: View {
     let model: ControllerModel
 
     var body: some View {
-        VStack(spacing: 14) {
-            ReceiverPicker(model: model)
+        VStack(spacing: 12) {
+            Divider()
             if model.needsPairing, model.selected != nil {
                 PairingForm(model: model)
             } else if model.isConnected {
-                NowPlayingView(info: model.state?.nowPlaying)
+                NowPlayingView(
+                    info: model.state?.nowPlaying,
+                    artwork: model.state?.nowPlaying?.artworkID.flatMap { model.artworkImages[$0] }
+                )
+                Divider()
                 TransportView(model: model)
                 VolumeView(model: model)
             } else {
@@ -23,24 +116,87 @@ struct PopoverView: View {
                     .foregroundStyle(.red)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
-            Divider()
-            HStack {
-                Button("Hotkeys…") {
-                    openWindow(id: "hotkeys")
-                    NSApp.activate()
-                }
-                Spacer()
-                if model.selected != nil {
-                    Button("Forget key") { model.forgetSelected() }
-                }
-                Button("Quit") { NSApp.terminate(nil) }
-            }
-            .buttonStyle(.link)
-            .font(.caption)
         }
-        .padding(16)
-        .frame(width: 300)
-        .task { model.startBrowsing() }
+    }
+}
+
+private struct ReceiverSection: View {
+    let model: ReceiverModel
+    @State private var confirmNewKey = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("This Mac as receiver", systemImage: "dot.radiowaves.left.and.right")
+                .font(.headline)
+            statusLine
+            adapterLine
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Pairing key — enter it on the controller once.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                HStack {
+                    Text(model.key.displayString)
+                        .font(.system(.callout, design: .monospaced))
+                        .textSelection(.enabled)
+                    Spacer()
+                    Button("Copy") {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(model.key.displayString, forType: .string)
+                    }
+                    .controlSize(.small)
+                }
+                Button("New key…") { confirmNewKey = true }
+                    .buttonStyle(.link)
+                    .font(.caption)
+            }
+            if let warning = model.keychainWarning {
+                Text(warning).font(.caption2).foregroundStyle(.orange)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .confirmationDialog(
+            "Create a new pairing key?",
+            isPresented: $confirmNewKey
+        ) {
+            Button("Create new key", role: .destructive) { model.regenerateKey() }
+        } message: {
+            Text("Controllers paired with the old key will have to pair again.")
+        }
+    }
+
+    @ViewBuilder private var statusLine: some View {
+        switch model.status {
+        case .stopped:
+            Text("Not running").font(.callout).foregroundStyle(.secondary)
+        case .starting:
+            Text("Starting…").font(.callout).foregroundStyle(.secondary)
+        case .listening(let name, _):
+            Label("Visible to controllers as “\(name)”", systemImage: "checkmark.circle.fill")
+                .font(.callout)
+                .foregroundStyle(.green)
+        case .failed(let reason):
+            Label(reason, systemImage: "exclamationmark.triangle.fill")
+                .font(.callout)
+                .foregroundStyle(.red)
+        }
+    }
+
+    @ViewBuilder private var adapterLine: some View {
+        switch model.adapterWorks {
+        case .none:
+            EmptyView()
+        case .some(true):
+            Label("Media control works on this Mac", systemImage: "checkmark.circle")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        case .some(false):
+            Label(
+                "Media control self-test failed. A macOS update may have broken the adapter.",
+                systemImage: "exclamationmark.triangle"
+            )
+            .font(.caption)
+            .foregroundStyle(.orange)
+        }
     }
 }
 
@@ -124,17 +280,32 @@ private struct PairingForm: View {
 
 private struct NowPlayingView: View {
     let info: NowPlayingInfo?
+    let artwork: NSImage?
 
     var body: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 6) {
             if let info {
-                Text(info.title ?? "Unknown title")
-                    .font(.headline)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.center)
-                Text(subtitle(info))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                HStack(alignment: .top, spacing: 10) {
+                    if let artwork {
+                        Image(nsImage: artwork)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 64, height: 64)
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(info.title ?? "Unknown title")
+                            .font(.headline)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text(subtitle(info))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
                 if info.duration != nil, info.elapsedTime != nil {
                     TimelineView(.periodic(from: .now, by: 1)) { context in
                         Progress(
@@ -144,10 +315,13 @@ private struct NowPlayingView: View {
                     }
                 }
             } else {
-                Text("Nothing playing").foregroundStyle(.secondary)
+                Text("Nothing playing")
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, minHeight: 64)
             }
         }
-        .frame(maxWidth: .infinity, minHeight: 56)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 8)
     }
 
     private func subtitle(_ info: NowPlayingInfo) -> String {
@@ -212,9 +386,15 @@ private struct TransportView: View {
                 skip(10)
                 skip(20)
             }
-            HStack(spacing: 40) {
+            HStack(spacing: 32) {
                 Button { model.send(.previous) } label: { Image(systemName: "backward.fill") }
+                    .help("Previous")
+                if supportsStop {
+                    Button { model.send(.stop) } label: { Image(systemName: "stop.fill") }
+                        .help("Stop")
+                }
                 Button { model.send(.next) } label: { Image(systemName: "forward.fill") }
+                    .help("Next")
             }
         }
         .buttonStyle(.plain)
@@ -222,6 +402,10 @@ private struct TransportView: View {
     }
 
     private var playing: Bool { model.state?.nowPlaying?.playing ?? false }
+
+    private var supportsStop: Bool {
+        PlayerCapabilities.supportsStop(bundleIdentifier: model.state?.nowPlaying?.bundleIdentifier)
+    }
 
     private func skip(_ seconds: Int) -> some View {
         Button { model.send(.skip(seconds: Double(seconds))) } label: {

@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import Observation
 import VirtualRemoteCore
@@ -18,6 +19,8 @@ final class ControllerModel {
     private(set) var state: RemoteState?
     private(set) var lastError: String?
     var needsPairing = false
+    /// Thumbnails by id, as sent by the receiver.
+    private(set) var artworkImages: [String: NSImage] = [:]
 
     private let keyStore = KeychainKeyStore(service: "org.kavaz.VirtualRemote")
     private let defaults = UserDefaults.standard
@@ -36,6 +39,17 @@ final class ControllerModel {
                 autoSelectIfNeeded()
             }
         }
+    }
+
+    /// Stops browsing and drops the connection (used when leaving controller mode).
+    func shutdown() {
+        browseTask?.cancel()
+        browseTask = nil
+        teardown()
+        receivers = []
+        selected = nil
+        connection = .idle
+        needsPairing = false
     }
 
     func select(_ receiver: DiscoveredReceiver) {
@@ -131,6 +145,9 @@ final class ControllerModel {
             group.addTask { try await client.connect() }
             group.addTask {
                 try await Task.sleep(for: timeout)
+                // Closing unblocks the pending connect call; otherwise the group
+                // would wait for it and the timeout could never surface.
+                client.close()
                 throw ConnectTimeout()
             }
             defer { group.cancelAll() }
@@ -142,6 +159,9 @@ final class ControllerModel {
         switch message {
         case .state(let s): state = s
         case .error(let text): lastError = text
+        case .artwork(let artwork):
+            if artworkImages.count >= 16 { artworkImages.removeAll() }
+            artworkImages[artwork.id] = NSImage(data: artwork.jpeg)
         case .command: break
         }
     }

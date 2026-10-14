@@ -21,6 +21,7 @@ public actor CommandExecutor {
         case .play: try await player.send(.play)
         case .pause: try await player.send(.pause)
         case .togglePlayPause: try await player.send(.togglePlayPause)
+        case .stop: try await player.send(.stop)
         case .next: try await player.send(.next)
         case .previous: try await player.send(.previous)
         case .skip(let seconds): try await skip(by: seconds)

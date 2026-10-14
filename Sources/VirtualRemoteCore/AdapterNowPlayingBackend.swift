@@ -39,6 +39,7 @@ public struct AdapterNowPlayingBackend: NowPlayingBackend {
         var duration: Double?
         var playbackRate: Double?
         var timestamp: Date?
+        var artworkData: String?  // base64
     }
 
     /// Parses `get` output. `null`, empty output, or output without a bundle
@@ -63,7 +64,8 @@ public struct AdapterNowPlayingBackend: NowPlayingBackend {
             elapsedTime: raw.elapsedTime,
             duration: raw.duration,
             playbackRate: raw.playbackRate,
-            timestamp: raw.timestamp
+            timestamp: raw.timestamp,
+            artworkData: raw.artworkData.flatMap { Data(base64Encoded: $0) }
         )
     }
 }
