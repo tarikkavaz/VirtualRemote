@@ -2,8 +2,7 @@ import SwiftUI
 import VirtualRemoteCore
 
 struct PopoverView: View {
-    @Environment(\.openWindow) private var openWindow
-    @State private var showSettings = false
+    @Environment(\.openSettings) private var openSettings
     let app: AppModel
 
     var body: some View {
@@ -11,18 +10,26 @@ struct PopoverView: View {
             header
             if app.mode.isController {
                 ControllerSection(model: app.controller)
-            }
-            if app.mode == .both { Divider() }
-            if app.mode.isReceiver {
-                ReceiverSection(model: app.receiver)
+            } else {
+                Divider()
+                ReceiverStatusLines(model: app.receiver)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Button("Pairing key…") { open(.modes) }
+                    .buttonStyle(.link)
+                    .font(.caption)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .padding(16)
         .frame(width: 300)
+        .background(WindowFitter())
+        // While the window is taller than the content, keep the content at the
+        // top instead of centered.
+        .frame(maxHeight: .infinity, alignment: .top)
     }
 
     private var header: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 10) {
             if app.mode.isController {
                 ReceiverPicker(model: app.controller)
             } else {
@@ -30,64 +37,24 @@ struct PopoverView: View {
                     .font(.headline)
                 Spacer()
             }
-            Button { showSettings.toggle() } label: {
-                Image(systemName: showSettings ? "gearshape.fill" : "gearshape")
-            }
+            iconButton("gearshape", help: "Settings") { open(.general) }
+            iconButton("power", help: "Quit") { NSApp.terminate(nil) }
+        }
+    }
+
+    private func iconButton(
+        _ symbol: String, help: String, action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) { Image(systemName: symbol) }
             .buttonStyle(.plain)
-            .help("Settings")
-            // Own popover instead of inline content, so the main window never resizes.
-            .popover(isPresented: $showSettings, arrowEdge: .bottom) {
-                footer
-                    .padding(16)
-                    .frame(width: 280)
-            }
-        }
+            .help(help)
     }
 
-    private var footer: some View {
-        VStack(spacing: 8) {
-            HStack {
-                Text("Mode").font(.caption).foregroundStyle(.secondary)
-                Picker("Mode", selection: modeBinding) {
-                    ForEach(AppMode.allCases, id: \.self) { Text($0.title).tag($0) }
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-            }
-            Toggle("Launch at login", isOn: loginBinding)
-                .toggleStyle(.checkbox)
-                .font(.caption)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            if let error = app.launchAtLoginError {
-                Text(error)
-                    .font(.caption2)
-                    .foregroundStyle(.red)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            HStack {
-                if app.mode.isController {
-                    Button("Hotkeys…") {
-                        openWindow(id: "hotkeys")
-                        NSApp.activate()
-                    }
-                    if app.controller.selected != nil {
-                        Button("Forget key") { app.controller.forgetSelected() }
-                    }
-                }
-                Spacer()
-                Button("Quit") { NSApp.terminate(nil) }
-            }
-            .buttonStyle(.link)
-            .font(.caption)
-        }
-    }
-
-    private var modeBinding: Binding<AppMode> {
-        Binding(get: { app.mode }, set: { app.setMode($0) })
-    }
-
-    private var loginBinding: Binding<Bool> {
-        Binding(get: { app.launchAtLogin }, set: { app.setLaunchAtLogin($0) })
+    /// The app has no Dock icon, so bring it to the front or the window opens behind others.
+    private func open(_ tab: SettingsTab) {
+        app.settingsTab = tab
+        NSApp.activate()
+        openSettings()
     }
 }
 
@@ -116,86 +83,6 @@ private struct ControllerSection: View {
                     .foregroundStyle(.red)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
-        }
-    }
-}
-
-private struct ReceiverSection: View {
-    let model: ReceiverModel
-    @State private var confirmNewKey = false
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Label("This Mac as receiver", systemImage: "dot.radiowaves.left.and.right")
-                .font(.headline)
-            statusLine
-            adapterLine
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Pairing key — enter it on the controller once.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                HStack {
-                    Text(model.key.displayString)
-                        .font(.system(.callout, design: .monospaced))
-                        .textSelection(.enabled)
-                    Spacer()
-                    Button("Copy") {
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString(model.key.displayString, forType: .string)
-                    }
-                    .controlSize(.small)
-                }
-                Button("New key…") { confirmNewKey = true }
-                    .buttonStyle(.link)
-                    .font(.caption)
-            }
-            if let warning = model.keychainWarning {
-                Text(warning).font(.caption2).foregroundStyle(.orange)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .confirmationDialog(
-            "Create a new pairing key?",
-            isPresented: $confirmNewKey
-        ) {
-            Button("Create new key", role: .destructive) { model.regenerateKey() }
-        } message: {
-            Text("Controllers paired with the old key will have to pair again.")
-        }
-    }
-
-    @ViewBuilder private var statusLine: some View {
-        switch model.status {
-        case .stopped:
-            Text("Not running").font(.callout).foregroundStyle(.secondary)
-        case .starting:
-            Text("Starting…").font(.callout).foregroundStyle(.secondary)
-        case .listening(let name, _):
-            Label("Visible to controllers as “\(name)”", systemImage: "checkmark.circle.fill")
-                .font(.callout)
-                .foregroundStyle(.green)
-        case .failed(let reason):
-            Label(reason, systemImage: "exclamationmark.triangle.fill")
-                .font(.callout)
-                .foregroundStyle(.red)
-        }
-    }
-
-    @ViewBuilder private var adapterLine: some View {
-        switch model.adapterWorks {
-        case .none:
-            EmptyView()
-        case .some(true):
-            Label("Media control works on this Mac", systemImage: "checkmark.circle")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        case .some(false):
-            Label(
-                "Media control self-test failed. A macOS update may have broken the adapter.",
-                systemImage: "exclamationmark.triangle"
-            )
-            .font(.caption)
-            .foregroundStyle(.orange)
         }
     }
 }
@@ -372,19 +259,21 @@ private struct Progress: View {
 
 private struct TransportView: View {
     let model: ControllerModel
+    @AppStorage(AppSettings.Key.skipShortSeconds) private var skipShort = AppSettings.Default.skipShortSeconds
+    @AppStorage(AppSettings.Key.skipLongSeconds) private var skipLong = AppSettings.Default.skipLongSeconds
 
     var body: some View {
         VStack(spacing: 10) {
             HStack(spacing: 14) {
-                skip(-20)
-                skip(-10)
+                skip(-skipLong)
+                skip(-skipShort)
                 Button { model.send(.togglePlayPause) } label: {
                     Image(systemName: playing ? "pause.fill" : "play.fill")
                         .font(.system(size: 26))
                         .frame(width: 44, height: 44)
                 }
-                skip(10)
-                skip(20)
+                skip(skipShort)
+                skip(skipLong)
             }
             HStack(spacing: 32) {
                 Button { model.send(.previous) } label: { Image(systemName: "backward.fill") }

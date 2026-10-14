@@ -29,6 +29,8 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/adapter"
 cp "$BIN_DIR/VirtualRemote" "$APP/Contents/MacOS/VirtualRemote"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
+# shown in Settings > General > About
+/usr/libexec/PlistBuddy -c "Add :VRAdapterCommit string $ADAPTER_COMMIT" "$APP/Contents/Info.plist"
 
 # SwiftPM resource bundles (e.g. KeyboardShortcuts strings)
 for bundle in "$BIN_DIR"/*.bundle; do

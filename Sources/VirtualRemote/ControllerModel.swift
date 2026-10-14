@@ -99,7 +99,8 @@ final class ControllerModel {
     }
 
     private func autoSelectIfNeeded() {
-        guard selected == nil, let name = defaults.string(forKey: lastReceiverKey),
+        guard AppSettings.autoConnect, selected == nil,
+              let name = defaults.string(forKey: lastReceiverKey),
               let match = receivers.first(where: { $0.name == name })
         else { return }
         select(match)

@@ -13,6 +13,8 @@ final class AppModel {
     private(set) var mode: AppMode
     private(set) var launchAtLogin = false
     private(set) var launchAtLoginError: String?
+    /// Tab the Settings window shows; set before opening it to jump to a tab.
+    var settingsTab: SettingsTab = .general
 
     private let defaults = UserDefaults.standard
     private let modeKey = "appMode"

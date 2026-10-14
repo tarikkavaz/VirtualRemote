@@ -18,50 +18,42 @@ extension KeyboardShortcuts.Name {
     static let next = Self("next", default: .init(.period, modifiers: hyper))
 }
 
+/// The "10" and "20" in the names are the default skip lengths; the real lengths
+/// come from AppSettings. The names stay so existing recorded shortcuts keep working.
 @MainActor
 enum Hotkeys {
-    static let volumeStep = 0.05
-
-    static let all: [(name: KeyboardShortcuts.Name, title: String)] = [
-        (.playPause, "Play / Pause"),
-        (.back10, "Back 10 s"),
-        (.forward10, "Forward 10 s"),
-        (.back20, "Back 20 s"),
-        (.forward20, "Forward 20 s"),
-        (.stop, "Stop"),
-        (.previous, "Previous"),
-        (.next, "Next"),
-        (.volumeUp, "Volume up"),
-        (.volumeDown, "Volume down"),
-    ]
+    /// Rows for the shortcuts list. Titles follow the current skip lengths.
+    static func all(short: Int, long: Int) -> [(name: KeyboardShortcuts.Name, title: String)] {
+        [
+            (.playPause, "Play / Pause"),
+            (.back10, "Back \(short) s"),
+            (.forward10, "Forward \(short) s"),
+            (.back20, "Back \(long) s"),
+            (.forward20, "Forward \(long) s"),
+            (.stop, "Stop"),
+            (.previous, "Previous"),
+            (.next, "Next"),
+            (.volumeUp, "Volume up"),
+            (.volumeDown, "Volume down"),
+        ]
+    }
 
     static func bind(to model: ControllerModel) {
-        func on(_ name: KeyboardShortcuts.Name, _ command: RemoteCommand) {
+        // The command is built at key press, so changed settings apply immediately.
+        func on(_ name: KeyboardShortcuts.Name, _ command: @escaping @MainActor () -> RemoteCommand) {
             KeyboardShortcuts.onKeyDown(for: name) { [model] in
-                Task { @MainActor in model.send(command) }
+                Task { @MainActor in model.send(command()) }
             }
         }
-        on(.playPause, .togglePlayPause)
-        on(.back10, .skip(seconds: -10))
-        on(.forward10, .skip(seconds: 10))
-        on(.back20, .skip(seconds: -20))
-        on(.forward20, .skip(seconds: 20))
-        on(.stop, .stop)
-        on(.previous, .previous)
-        on(.next, .next)
-        on(.volumeUp, .adjustVolume(volumeStep))
-        on(.volumeDown, .adjustVolume(-volumeStep))
-    }
-}
-
-struct HotkeysView: View {
-    var body: some View {
-        Form {
-            ForEach(Hotkeys.all, id: \.name) { item in
-                KeyboardShortcuts.Recorder(item.title, name: item.name)
-            }
-        }
-        .padding(20)
-        .frame(width: 320)
+        on(.playPause) { .togglePlayPause }
+        on(.back10) { .skip(seconds: -Double(AppSettings.skipShortSeconds)) }
+        on(.forward10) { .skip(seconds: Double(AppSettings.skipShortSeconds)) }
+        on(.back20) { .skip(seconds: -Double(AppSettings.skipLongSeconds)) }
+        on(.forward20) { .skip(seconds: Double(AppSettings.skipLongSeconds)) }
+        on(.stop) { .stop }
+        on(.previous) { .previous }
+        on(.next) { .next }
+        on(.volumeUp) { .adjustVolume(AppSettings.volumeStep) }
+        on(.volumeDown) { .adjustVolume(-AppSettings.volumeStep) }
     }
 }

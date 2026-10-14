@@ -16,9 +16,8 @@ struct VirtualRemoteApp: App {
         }
         .menuBarExtraStyle(.window)
 
-        Window("Hotkeys", id: "hotkeys") {
-            HotkeysView()
+        Settings {
+            SettingsView(app: app)
         }
-        .windowResizability(.contentSize)
     }
 }
