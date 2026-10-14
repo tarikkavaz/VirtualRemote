@@ -1,6 +1,13 @@
 #!/bin/sh
-# Builds build/VirtualRemote.app from the SwiftPM executable (ad-hoc signed),
-# including the mediaremote-adapter (needs git and cmake).
+# Builds build/VirtualRemote.app from the SwiftPM executable, including the
+# mediaremote-adapter (needs git and cmake).
+#
+# Environment:
+#   SIGN_IDENTITY  certificate name for a stable signature (keeps Local Network and
+#                  Keychain permissions across rebuilds); default "-" is ad-hoc.
+#   UNIVERSAL=1    build for Apple Silicon and Intel.
+#   HARDENED=1     hardened runtime and secure timestamp (required for notarization).
+# scripts/release.sh sets UNIVERSAL and HARDENED.
 set -eu
 cd "$(dirname "$0")/.."
 
@@ -8,7 +15,12 @@ ADAPTER_REPO=https://github.com/ungive/mediaremote-adapter.git
 ADAPTER_COMMIT=797729d9b16316dc313844476c153d7a107ca0df
 ADAPTER_SRC=build/adapter-src
 
-# --- adapter (pinned) ---
+ARCH_FLAGS=""
+[ "${UNIVERSAL:-0}" = 1 ] && ARCH_FLAGS="--arch arm64 --arch x86_64"
+SIGN_FLAGS=""
+[ "${HARDENED:-0}" = 1 ] && SIGN_FLAGS="--options runtime --timestamp"
+
+# --- adapter (pinned; its cmake build is universal) ---
 mkdir -p build
 if [ ! -d "$ADAPTER_SRC/.git" ]; then
     git clone -q "$ADAPTER_REPO" "$ADAPTER_SRC"
@@ -21,8 +33,8 @@ cmake -S "$ADAPTER_SRC" -B "$ADAPTER_SRC/build" >/dev/null
 cmake --build "$ADAPTER_SRC/build" >/dev/null
 
 # --- app ---
-swift build -c release --product VirtualRemote
-BIN_DIR="$(swift build -c release --show-bin-path)"
+swift build -c release $ARCH_FLAGS --product VirtualRemote
+BIN_DIR="$(swift build -c release $ARCH_FLAGS --show-bin-path)"
 
 APP="build/VirtualRemote.app"
 rm -rf "$APP"
@@ -47,11 +59,12 @@ cp -R "$ADAPTER_SRC/build/MediaRemoteAdapter.framework" "$ADAPTER_DEST/"
 cp "$ADAPTER_SRC/build/MediaRemoteAdapterTestClient" "$ADAPTER_DEST/"
 cp "$ADAPTER_SRC/LICENSE" "$ADAPTER_DEST/LICENSE"
 
-# sign inside out (no --deep). Set SIGN_IDENTITY to a certificate name for a
-# stable identity (keeps Local Network and Keychain permissions across rebuilds);
-# the default "-" is ad-hoc and changes on every build.
+# sign inside out (no --deep)
 IDENTITY="${SIGN_IDENTITY:--}"
-codesign --force --sign "$IDENTITY" "$ADAPTER_DEST/MediaRemoteAdapter.framework"
-codesign --force --sign "$IDENTITY" "$ADAPTER_DEST/MediaRemoteAdapterTestClient"
-codesign --force --sign "$IDENTITY" "$APP"
+codesign --force $SIGN_FLAGS --sign "$IDENTITY" "$ADAPTER_DEST/MediaRemoteAdapter.framework"
+codesign --force $SIGN_FLAGS --sign "$IDENTITY" "$ADAPTER_DEST/MediaRemoteAdapterTestClient"
+for bundle in "$APP"/Contents/Resources/*.bundle; do
+    [ -e "$bundle" ] && codesign --force $SIGN_FLAGS --sign "$IDENTITY" "$bundle"
+done
+codesign --force $SIGN_FLAGS --sign "$IDENTITY" "$APP"
 echo "built $APP"
