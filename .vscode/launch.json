@@ -1,0 +1,58 @@
+{
+  "configurations": [
+    {
+      "type": "lldb",
+      "request": "launch",
+      "args": [],
+      "cwd": "${workspaceFolder:VirtualRemote}",
+      "name": "Debug VirtualRemote",
+      "program": "${workspaceFolder:VirtualRemote}/.build/debug/VirtualRemote",
+      "preLaunchTask": "swift: Build Debug VirtualRemote"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "args": [],
+      "cwd": "${workspaceFolder:VirtualRemote}",
+      "name": "Release VirtualRemote",
+      "program": "${workspaceFolder:VirtualRemote}/.build/release/VirtualRemote",
+      "preLaunchTask": "swift: Build Release VirtualRemote"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "args": [],
+      "cwd": "${workspaceFolder:VirtualRemote}",
+      "name": "Debug vrreceiver",
+      "program": "${workspaceFolder:VirtualRemote}/.build/debug/vrreceiver",
+      "preLaunchTask": "swift: Build Debug vrreceiver"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "args": [],
+      "cwd": "${workspaceFolder:VirtualRemote}",
+      "name": "Release vrreceiver",
+      "program": "${workspaceFolder:VirtualRemote}/.build/release/vrreceiver",
+      "preLaunchTask": "swift: Build Release vrreceiver"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "args": [],
+      "cwd": "${workspaceFolder:VirtualRemote}",
+      "name": "Debug vrctl",
+      "program": "${workspaceFolder:VirtualRemote}/.build/debug/vrctl",
+      "preLaunchTask": "swift: Build Debug vrctl"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "args": [],
+      "cwd": "${workspaceFolder:VirtualRemote}",
+      "name": "Release vrctl",
+      "program": "${workspaceFolder:VirtualRemote}/.build/release/vrctl",
+      "preLaunchTask": "swift: Build Release vrctl"
+    }
+  ]
+}
