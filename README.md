@@ -132,6 +132,8 @@ SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" sh scripts/release.
 
 ## Status
 
+See the [changelog](CHANGELOG.md) for what changed in each version.
+
 This is an early release (0.2.1). Launch at login, sleep and wake of the receiver, Wi-Fi drops and receiver restarts are tested. The things we have not been able to check are a first launch on a Mac that never ran the app and the Intel half of the universal build.
 
 ## Credits

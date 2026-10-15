@@ -18,6 +18,11 @@ VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Resour
 ZIP="build/VirtualRemote-$VERSION.zip"
 UPLOAD=build/notarize-upload.zip
 
+grep -q "^## \[$VERSION\]" CHANGELOG.md || {
+    echo "CHANGELOG.md has no entry for $VERSION. Add one first." >&2
+    exit 1
+}
+
 UNIVERSAL=1 HARDENED=1 sh scripts/make-app.sh
 
 echo "== checking the build"

@@ -21,4 +21,5 @@ VirtualRemote-Package */
 .env
 
 # mkdown artifacts (auto-managed)
+CHANGELOG.html
 README.html
