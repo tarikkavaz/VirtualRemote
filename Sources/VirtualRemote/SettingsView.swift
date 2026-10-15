@@ -20,7 +20,7 @@ struct SettingsView: View {
                 .tabItem { Label("Modes", systemImage: "switch.2") }
                 .tag(SettingsTab.modes)
             ShortcutsTab()
-                .tabItem { Label("Keyboard Shortcuts", systemImage: "keyboard") }
+                .tabItem { Label("Shortcuts", systemImage: "keyboard") }
                 .tag(SettingsTab.shortcuts)
         }
         .frame(width: 460, height: 500)

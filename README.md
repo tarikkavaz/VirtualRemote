@@ -53,7 +53,7 @@ The first time, macOS asks for two permissions:
 
 ## Keyboard shortcuts
 
-These work from any app. Change them in Settings > Keyboard Shortcuts.
+These work from any app. Change them in Settings > Shortcuts.
 
 | Action                  | Default shortcut                                   |
 | ----------------------- | -------------------------------------------------- |
@@ -70,7 +70,7 @@ Open the gear in the popover.
 
 - **General:** launch at login, connect to the last receiver automatically, the volume step for shortcuts, the two skip lengths, and an About section.
 - **Modes:** choose Controller, Receiver or Both. This is also where the receiver shows its pairing key and status, and where you enter or forget a key for the Mac you control.
-- **Keyboard Shortcuts:** record your own shortcuts.
+- **Shortcuts:** record your own keyboard shortcuts.
 
 ## Privacy and security
 
