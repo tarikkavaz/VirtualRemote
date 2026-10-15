@@ -1,8 +1,8 @@
 import Foundation
 
 /// Per-client queue between the network reader and the command runner.
-/// Adjacent volume commands are merged so a slider drag cannot build a
-/// backlog in front of a later pause or seek. Order of everything else is kept.
+/// Adjacent volume commands, and adjacent absolute seeks, are merged so a drag
+/// cannot build a backlog in front of a later pause. Order of everything else is kept.
 final class CommandQueue: @unchecked Sendable {
     /// Yields once per push; consume with `for await`, then drain with `pop()`.
     let signals: AsyncStream<Void>
@@ -22,6 +22,8 @@ final class CommandQueue: @unchecked Sendable {
                 items[items.count - 1] = command
             case (.adjustVolume(let a), .adjustVolume(let b)):
                 items[items.count - 1] = .adjustVolume(a + b)
+            case (.seek, .seek):
+                items[items.count - 1] = command
             default:
                 items.append(command)
             }

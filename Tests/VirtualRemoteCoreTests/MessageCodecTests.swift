@@ -8,6 +8,7 @@ import Testing
         .command(.togglePlayPause),
         .command(.stop),
         .command(.skip(seconds: -10)),
+        .command(.seek(to: 1234.5)),
         .command(.setVolume(0.35)),
         .command(.setMuted(true)),
         .state(RemoteState(

@@ -39,6 +39,16 @@ import Testing
         ])
     }
 
+    @Test func adjacentSeeksKeepOnlyTheLast() {
+        let q = CommandQueue()
+        q.push(.seek(to: 10))
+        q.push(.seek(to: 20))
+        q.push(.seek(to: 30))
+        q.push(.togglePlayPause)
+        q.push(.seek(to: 40))
+        #expect(drain(q) == [.seek(to: 30), .togglePlayPause, .seek(to: 40)])
+    }
+
     @Test func popOnEmptyReturnsNil() {
         #expect(CommandQueue().pop() == nil)
     }

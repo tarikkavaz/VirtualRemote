@@ -10,6 +10,8 @@ public enum RemoteCommand: Codable, Equatable, Sendable {
     case previous
     /// Relative seek. Negative = back.
     case skip(seconds: Double)
+    /// Absolute position in seconds, e.g. from clicking the progress bar.
+    case seek(to: Double)
     /// Absolute volume, 0...1.
     case setVolume(Double)
     /// Relative volume change, in 0...1 units.

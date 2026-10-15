@@ -73,7 +73,8 @@ private struct ControllerSection: View {
                     info: model.state?.nowPlaying,
                     artwork: model.state?.nowPlaying?.artworkID.flatMap { model.artworkImages[$0] },
                     appIcon: model.state?.nowPlaying.flatMap { model.appIcons[$0.bundleIdentifier] },
-                    appName: model.state?.nowPlaying.flatMap { model.appNames[$0.bundleIdentifier] }
+                    appName: model.state?.nowPlaying.flatMap { model.appNames[$0.bundleIdentifier] },
+                    onSeek: { model.send(.seek(to: $0)) }
                 )
                 Divider()
                 TransportView(model: model)
@@ -193,6 +194,8 @@ private struct NowPlayingView: View {
     let appIcon: NSImage?
     let appName: String?
 
+    /// Called with an absolute position in seconds when the progress bar is clicked or dragged.
+    let onSeek: (Double) -> Void
     var body: some View {
         VStack(spacing: 6) {
             if let info {
@@ -228,7 +231,8 @@ private struct NowPlayingView: View {
                     TimelineView(.periodic(from: .now, by: 1)) { context in
                         Progress(
                             elapsed: info.estimatedElapsed(at: context.date) ?? 0,
-                            duration: info.duration ?? 0
+                            duration: info.duration ?? 0,
+                            onSeek: onSeek
                         )
                     }
                 }
@@ -271,11 +275,24 @@ private struct Progress: View {
     let elapsed: Double
     let duration: Double
 
+    let onSeek: (Double) -> Void
+
+    @State private var hoverX: CGFloat?
+    @State private var dragging = false
+    /// Position shown while dragging, and for a moment after release until the
+    /// receiver's state catches up.
+    @State private var scrub: Double?
+    @State private var lastSent = Date.distantPast
+
+    private let trackHeight: CGFloat = 4
+    private let hitHeight: CGFloat = 16
+
+    private var shown: Double { scrub ?? min(max(elapsed, 0), duration) }
     var body: some View {
         VStack(spacing: 2) {
-            ProgressView(value: min(max(elapsed, 0), duration), total: max(duration, 1))
+            bar
             HStack {
-                Text(format(elapsed))
+                Text(format(shown))
                 Spacer()
                 Text(format(duration))
             }
@@ -285,6 +302,78 @@ private struct Progress: View {
     }
 
     private func format(_ seconds: Double) -> String {
+    private var bar: some View {
+        GeometryReader { geo in
+            let width = max(geo.size.width, 1)
+            let x = width * fraction(shown)
+            ZStack(alignment: .leading) {
+                Capsule().fill(.quaternary).frame(height: trackHeight)
+                Capsule().fill(Color.accentColor).frame(width: x, height: trackHeight)
+                if hoverX != nil || dragging {
+                    Circle().fill(Color.accentColor)
+                        .frame(width: 10, height: 10)
+                        .offset(x: x - 5)
+                }
+            }
+            .frame(width: width, height: hitHeight)
+            .contentShape(Rectangle())
+            .pointerCursor()
+            .onContinuousHover { phase in
+                switch phase {
+                case .active(let point): hoverX = point.x
+                case .ended: hoverX = nil
+                }
+            }
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        let target = time(at: value.location.x, width: width)
+                        dragging = true
+                        scrub = target
+                        // At most ~12 seeks per second while dragging.
+                        guard Date().timeIntervalSince(lastSent) > 0.08 else { return }
+                        lastSent = Date()
+                        onSeek(target)
+                    }
+                    .onEnded { value in
+                        let target = time(at: value.location.x, width: width)
+                        dragging = false
+                        scrub = target
+                        onSeek(target)  // final position
+                        Task {
+                            try? await Task.sleep(for: .seconds(1))
+                            if !dragging, scrub == target { scrub = nil }
+                        }
+                    }
+            )
+            .overlay(alignment: .topLeading) { bubble(width: width) }
+        }
+        .frame(height: hitHeight)
+    }
+
+    @ViewBuilder private func bubble(width: CGFloat) -> some View {
+        if dragging || hoverX != nil {
+            let seconds = dragging ? shown : time(at: hoverX ?? 0, width: width)
+            let centerX = dragging ? width * fraction(shown) : (hoverX ?? 0)
+            Text(format(seconds))
+                .font(.caption2.monospacedDigit())
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 5))
+                .fixedSize()
+                .position(x: min(max(centerX, 28), width - 28), y: -12)
+                .allowsHitTesting(false)
+        }
+    }
+
+    private func fraction(_ seconds: Double) -> CGFloat {
+        CGFloat(min(max(seconds / max(duration, 1), 0), 1))
+    }
+
+    private func time(at x: CGFloat, width: CGFloat) -> Double {
+        Double(min(max(x / width, 0), 1)) * duration
+    }
+
         let total = Int(max(0, seconds))
         let (h, m, s) = (total / 3600, total % 3600 / 60, total % 60)
         return h > 0

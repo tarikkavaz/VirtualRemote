@@ -45,6 +45,27 @@ import Testing
         #expect(await player.seeks == [120])
     }
 
+    @Test func seekGoesToTheAbsolutePosition() async throws {
+        let (exec, player, _) = make(info: playing(elapsed: 100))
+        try await exec.execute(.seek(to: 640))
+        #expect(await player.seeks == [640])
+    }
+
+    @Test func seekClampsToStartAndEnd() async throws {
+        let (exec, player, _) = make(info: playing(elapsed: 100, duration: 1000))
+        try await exec.execute(.seek(to: -5))
+        try await exec.execute(.seek(to: 5000))
+        #expect(await player.seeks == [0, 1000])
+    }
+
+    @Test func seekWithoutSessionThrows() async {
+        let (exec, player, _) = make(info: nil)
+        await #expect(throws: RemoteError.noActivePlayer) {
+            try await exec.execute(.seek(to: 10))
+        }
+        #expect(await player.seeks.isEmpty)
+    }
+
     @Test func skipCompensatesForSampleAgeWhilePlaying() async throws {
         let (exec, player, _) = make(info: playing(elapsed: 100), nowOffset: 5)
         try await exec.execute(.skip(seconds: -10))

@@ -25,6 +25,7 @@ public actor CommandExecutor {
         case .next: try await player.send(.next)
         case .previous: try await player.send(.previous)
         case .skip(let seconds): try await skip(by: seconds)
+        case .seek(let seconds): try await seek(to: seconds)
         case .setVolume(let value):
             try await volumeBackend.setVolume(Self.clamp(value, 0, 1))
         case .adjustVolume(let delta):
@@ -48,6 +49,12 @@ public actor CommandExecutor {
         else { throw RemoteError.noActivePlayer }
         let upper = info.duration ?? .greatestFiniteMagnitude
         try await player.seek(to: Self.clamp(elapsed + seconds, 0, upper))
+    }
+
+    private func seek(to seconds: Double) async throws {
+        guard let info = try await player.nowPlaying() else { throw RemoteError.noActivePlayer }
+        let upper = info.duration ?? .greatestFiniteMagnitude
+        try await player.seek(to: Self.clamp(seconds, 0, upper))
     }
 
     private static func clamp(_ v: Double, _ lo: Double, _ hi: Double) -> Double {
