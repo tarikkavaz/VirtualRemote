@@ -29,6 +29,14 @@ It controls whatever macOS lists as "Now Playing" on the other Mac. We tested Pl
 
 The release is signed and notarized by Apple, so macOS opens it without a warning. Do this on both Macs.
 
+Or install with Homebrew:
+
+```sh
+brew install --cask tarikkavaz/tap/virtualremote
+```
+
+Update later with `brew upgrade --cask virtualremote`.
+
 ## Set up
 
 One Mac plays the media (the receiver) and the other controls it (the controller). A Mac can also be both.
@@ -123,7 +131,7 @@ SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" sh scripts/release.
 
 ## Status
 
-This is an early release (0.1.0). The things we have not been able to check are launch at login after a reboot, a first launch on a Mac that never ran the app, and the Intel half of the universal build.
+This is an early release (0.1.1). Launch at login, sleep and wake of the receiver, and Safari and VLC playback are tested. The things we have not been able to check are a first launch on a Mac that never ran the app and the Intel half of the universal build.
 
 ## Credits
 
