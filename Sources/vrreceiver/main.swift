@@ -43,7 +43,7 @@ let backend = AdapterNowPlayingBackend(
     scriptPath: adapterDir + "/bin/mediaremote-adapter.pl",
     frameworkPath: adapterDir + "/build/MediaRemoteAdapter.framework"
 )
-let executor = CommandExecutor(player: backend, volume: OsascriptVolumeBackend())
+let executor = CommandExecutor(player: backend, volume: SystemVolumeBackend())
 let server = RemoteServer(executor: executor, key: key, serviceName: name)
 let port = try await server.start()
 

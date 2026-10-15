@@ -47,7 +47,7 @@ final class ReceiverModel {
             let name = Self.computerName()
             let executor = CommandExecutor(
                 player: AdapterNowPlayingBackend(paths: paths),
-                volume: OsascriptVolumeBackend()
+                volume: SystemVolumeBackend()
             )
             let server = RemoteServer(
                 executor: executor, key: key, serviceName: name, kind: await MacKind.detect())
