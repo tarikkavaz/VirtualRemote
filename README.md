@@ -9,16 +9,17 @@ Say a video is playing on a Mac mini under the TV, and you are working on a lapt
 - Play, pause, previous, next and stop.
 - Skip back and forward by two lengths. The defaults are 10 and 20 seconds, and you can change them.
 - Volume slider, mute, and volume shortcuts.
-- Shows what is playing: title, artist, the app, a progress bar and the cover art or thumbnail.
+- Shows what is playing: title, artist, the app with its icon, a progress bar and the cover art or thumbnail.
+- Click or drag the progress bar to jump to any point. A time bubble shows where you will land.
 - Global keyboard shortcuts that work in any app.
-- Finds the other Mac automatically on your local network and remembers it.
+- Finds the other Mac automatically on your local network and remembers it. Each Mac in the list shows an icon for its kind (Mac mini, MacBook, iMac and so on).
 
-It controls whatever macOS lists as "Now Playing" on the other Mac. We tested Plex, YouTube in Arc, and Spotify. Other players that report to Now Playing should work, but we have not tried them.
+It controls whatever macOS lists as "Now Playing" on the other Mac. We tested Plex, YouTube in Arc, Spotify, Safari, Chrome, Firefox, VLC, Apple Music and Apple TV. Other players that report to Now Playing should work, but we have not tried them.
 
 ## Requirements
 
 - macOS 14 or newer on both Macs.
-- Both Macs on the same local network.
+- Both Macs on the same local network, running the same version of VirtualRemote. Versions before 0.2.0 do not work with 0.2.0.
 - Apple Silicon or Intel. The release is a universal build. It has only been tested on Apple Silicon Macs running macOS 27.
 
 ## Install
@@ -131,7 +132,7 @@ SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" sh scripts/release.
 
 ## Status
 
-This is an early release (0.1.1). Launch at login, sleep and wake of the receiver, and Safari and VLC playback are tested. The things we have not been able to check are a first launch on a Mac that never ran the app and the Intel half of the universal build.
+This is an early release (0.2.0). Launch at login, sleep and wake of the receiver, Wi-Fi drops and receiver restarts are tested. The things we have not been able to check are a first launch on a Mac that never ran the app and the Intel half of the universal build.
 
 ## Credits
 
