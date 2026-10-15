@@ -33,5 +33,13 @@ let package = Package(
             name: "VirtualRemoteCoreTests",
             dependencies: ["VirtualRemoteCore"]
         ),
+        .testTarget(
+            name: "VirtualRemoteTests",
+            dependencies: [
+                "VirtualRemote",
+                "VirtualRemoteCore",
+                .product(name: "KeyboardShortcuts", package: "KeyboardShortcuts"),
+            ]
+        ),
     ]
 )

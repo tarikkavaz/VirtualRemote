@@ -4,6 +4,14 @@ All notable changes to VirtualRemote are listed here, newest first. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Add an entry
 for every release before running `scripts/release.sh`.
 
+## [Unreleased]
+
+### Fixed
+
+- Stopping the receiver right after starting it (for example by switching the mode)
+  could leave a stale error such as "The media adapter is missing" on the stopped
+  receiver. A start that was cancelled no longer writes to the status.
+
 ## [0.2.1] - 2026-10-15
 
 ### Fixed

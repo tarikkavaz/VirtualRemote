@@ -20,8 +20,10 @@ final class ControllerModel {
     private(set) var appIcons: [String: NSImage] = [:]
     private(set) var appNames: [String: String] = [:]
 
-    private let keyStore = KeychainKeyStore(service: "org.kavaz.VirtualRemote")
-    private let defaults = UserDefaults.standard
+    private let keyStore: any KeyStoring
+    private let defaults: UserDefaults
+    /// Pause before the next automatic connect attempt.
+    private let retryDelay: Duration
     private let lastReceiverKey = "lastReceiverName"
     private var client: RemoteClient?
     private var browseTask: Task<Void, Never>?
@@ -30,6 +32,16 @@ final class ControllerModel {
     /// macOS refused local network access while browsing or connecting.
     private var browserDenied = false
     private var connectDenied = false
+
+    init(
+        keyStore: any KeyStoring = KeychainKeyStore(service: "org.kavaz.VirtualRemote"),
+        defaults: UserDefaults = .standard,
+        retryDelay: Duration = .seconds(3)
+    ) {
+        self.keyStore = keyStore
+        self.defaults = defaults
+        self.retryDelay = retryDelay
+    }
 
     var isConnected: Bool { connection == .connected }
 
@@ -69,8 +81,7 @@ final class ControllerModel {
                 switch event {
                 case .receivers(let list):
                     browserDenied = false
-                    receivers = list
-                    autoSelectIfNeeded()
+                    updateReceivers(list)
                 case .localNetworkDenied:
                     browserDenied = true
                 case .ready:
@@ -78,6 +89,12 @@ final class ControllerModel {
                 }
             }
         }
+    }
+
+    /// The current list from discovery. Connects to the remembered receiver when it shows up.
+    func updateReceivers(_ list: [DiscoveredReceiver]) {
+        receivers = list
+        autoSelectIfNeeded()
     }
 
     /// Searches again and reconnects now, instead of waiting for the next automatic try.
@@ -200,7 +217,7 @@ final class ControllerModel {
             state = nil
             // Retrying cannot fix a wrong key. The user has to enter it again.
             if connection == .keyMismatch { return }
-            try? await Task.sleep(for: .seconds(3))
+            try? await Task.sleep(for: retryDelay)
             if !Task.isCancelled, selected == receiver {
                 connect(receiver, key: key, isRetry: true)
             }

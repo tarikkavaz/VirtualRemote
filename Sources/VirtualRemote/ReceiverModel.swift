@@ -20,11 +20,12 @@ final class ReceiverModel {
     private(set) var keychainWarning: String?
 
     private static let keyAccount = "receiver"
-    private let keyStore = KeychainKeyStore(service: "org.kavaz.VirtualRemote")
+    private let keyStore: any KeyStoring
     private var server: RemoteServer?
     private var startTask: Task<Void, Never>?
 
-    init() {
+    init(keyStore: any KeyStoring = KeychainKeyStore(service: "org.kavaz.VirtualRemote")) {
+        self.keyStore = keyStore
         if let stored = keyStore.load(account: Self.keyAccount) {
             key = stored
         } else {
@@ -38,12 +39,16 @@ final class ReceiverModel {
         status = .starting
         startTask = Task {
             defer { startTask = nil }
+            // stop() may have run since this task was created. It owns the status then.
+            guard !Task.isCancelled else { return }
             guard let paths = AdapterPaths.bundled() else {
                 status = .failed("The media adapter is missing from the app bundle.")
                 return
             }
             adapterWorks = nil
-            adapterWorks = await paths.selfTest()
+            let works = await paths.selfTest()
+            guard !Task.isCancelled else { return }
+            adapterWorks = works
             let name = Self.computerName()
             let executor = CommandExecutor(
                 player: AdapterNowPlayingBackend(paths: paths),
@@ -60,7 +65,9 @@ final class ReceiverModel {
                 self.server = server
                 status = .listening(name: name, port: port)
             } catch {
-                status = .failed("Could not start listening: \(error.localizedDescription)")
+                if !Task.isCancelled {
+                    status = .failed("Could not start listening: \(error.localizedDescription)")
+                }
             }
         }
     }

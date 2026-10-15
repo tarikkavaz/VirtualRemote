@@ -2,8 +2,15 @@ import Foundation
 import Security
 import VirtualRemoteCore
 
+/// Where pairing keys are kept. The Keychain in the app, a dictionary in tests.
+protocol KeyStoring {
+    func load(account: String) -> PairingKey?
+    func save(_ key: PairingKey, account: String) throws
+    func delete(account: String)
+}
+
 /// Stores one pairing key per receiver in the login keychain.
-struct KeychainKeyStore {
+struct KeychainKeyStore: KeyStoring {
     let service: String
 
     func load(account: String) -> PairingKey? {
