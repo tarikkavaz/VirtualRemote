@@ -351,12 +351,13 @@ private struct SkipSymbol: View {
     var body: some View {
         let magnitude = abs(seconds)
         let direction = seconds > 0 ? "goforward" : "gobackward"
-        if [5, 10, 15, 30, 45, 60, 75, 90].contains(magnitude) {
-            Image(systemName: "\(direction).\(magnitude)")
-        } else {
-            Image(systemName: direction)
-                .overlay { Text("\(magnitude)").font(.system(size: 8, weight: .bold)) }
-        }
+        Image(systemName: direction)
+            .font(.system(size: 26))
+            .overlay {
+                Text("\(magnitude)")
+                    .font(.system(size: magnitude >= 100 ? 9 : 11, weight: .bold, design: .rounded))
+                    .offset(y: 1)
+            }
     }
 }
 
@@ -398,3 +399,5 @@ private struct VolumeView: View {
         return level < 0.5 ? "speaker.wave.1.fill" : "speaker.wave.3.fill"
     }
 }
+        // The system symbols with a built-in number are too small to read here, so
+        // every length uses the plain arrow with our own larger number.
