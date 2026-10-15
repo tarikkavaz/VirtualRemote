@@ -4,7 +4,10 @@ All notable changes to VirtualRemote are listed here, newest first. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Add an entry
 for every release before running `scripts/release.sh`.
 
-## [Unreleased]
+## [0.2.2] - 2026-10-16
+
+Compatible with 0.2.0 and 0.2.1. The receiver does the refusing, so a Mac running
+0.2.2 as the receiver protects older controllers too.
 
 ### Changed
 
