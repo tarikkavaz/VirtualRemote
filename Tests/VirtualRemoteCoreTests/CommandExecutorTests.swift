@@ -96,11 +96,20 @@ import Testing
     }
 
     @Test func skipWithoutElapsedThrows() async {
-        let idle = NowPlayingInfo(bundleIdentifier: "com.spotify.client", playing: false)
-        let (exec, _, _) = make(info: idle)
-        await #expect(throws: RemoteError.noActivePlayer) {
+        // A player is active but reports no position, like a live stream.
+        let live = NowPlayingInfo(bundleIdentifier: "com.apple.Safari", playing: true)
+        let (exec, player, _) = make(info: live)
+        await #expect(throws: RemoteError.positionUnavailable) {
             try await exec.execute(.skip(seconds: 10))
         }
+        #expect(await player.seeks.isEmpty)
+    }
+
+    @Test func seekWorksWithoutAKnownDuration() async throws {
+        let live = NowPlayingInfo(bundleIdentifier: "com.apple.Safari", playing: true)
+        let (exec, player, _) = make(info: live)
+        try await exec.execute(.seek(to: 30))
+        #expect(await player.seeks == [30])
     }
 
     @Test func volumeIsClamped() async throws {

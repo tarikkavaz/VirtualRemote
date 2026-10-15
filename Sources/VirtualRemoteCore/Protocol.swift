@@ -142,6 +142,28 @@ public enum RemoteMessage: Codable, Equatable, Sendable {
 
 public enum RemoteError: Error, Equatable {
     case noActivePlayer
+    /// A player is active but reports no position (a live stream, for example).
+    case positionUnavailable
     case processFailed(executable: String, status: Int32)
     case invalidAdapterOutput
+}
+
+extension RemoteError: LocalizedError {
+    public var errorDescription: String? {
+        switch self {
+        case .noActivePlayer:
+            "Nothing is playing."
+        case .positionUnavailable:
+            "This player does not report a position, so it cannot skip or seek."
+        case .processFailed(let executable, let status):
+            "The media helper (\(URL(fileURLWithPath: executable).lastPathComponent)) failed with status \(status)."
+        case .invalidAdapterOutput:
+            "Could not read the media state."
+        }
+    }
+
+    /// Text to show a person for any error a command can throw.
+    public static func userMessage(for error: Error) -> String {
+        (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+    }
 }

@@ -8,6 +8,13 @@ for every release before running `scripts/release.sh`.
 
 ### Fixed
 
+- A failed command showed raw text such as `noActivePlayer` or
+  `processFailed(executable: ...)`. It now shows a plain sentence, for example
+  "Nothing is playing." or "This player does not report a position, so it cannot
+  skip or seek." (the second one is for live streams, which used to report the
+  wrong cause).
+- An error message stayed on screen until the next reconnect. It now disappears after
+  5 seconds, and a newer message replaces it.
 - Stopping the receiver right after starting it (for example by switching the mode)
   could leave a stale error such as "The media adapter is missing" on the stopped
   receiver. A start that was cancelled no longer writes to the status.

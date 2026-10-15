@@ -197,7 +197,7 @@ import Testing
         var it = client.messages.makeAsyncIterator()
         while let message = try await it.next() {
             if case .error(let text) = message {
-                #expect(text.contains("noActivePlayer"))
+                #expect(text == "Nothing is playing.")
                 return
             }
         }

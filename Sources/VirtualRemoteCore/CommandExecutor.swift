@@ -49,9 +49,10 @@ public actor CommandExecutor {
     }
 
     private func skip(by seconds: Double) async throws {
-        guard let info = try await player.nowPlaying(),
-              let elapsed = info.estimatedElapsed(at: now())
-        else { throw RemoteError.noActivePlayer }
+        guard let info = try await player.nowPlaying() else { throw RemoteError.noActivePlayer }
+        guard let elapsed = info.estimatedElapsed(at: now()) else {
+            throw RemoteError.positionUnavailable
+        }
         let upper = info.duration ?? .greatestFiniteMagnitude
         try await player.seek(to: Self.clamp(elapsed + seconds, 0, upper))
     }

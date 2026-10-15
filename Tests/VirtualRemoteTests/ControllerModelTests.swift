@@ -16,9 +16,11 @@ import VirtualRemoteCore
         // The suite is serialized, so tests never share it at the same time.
         private let suite = "VirtualRemoteTests.defaults"
 
-        init(retryDelay: Duration = .milliseconds(100)) {
+        init(retryDelay: Duration = .milliseconds(100), errorDuration: Duration = .seconds(5)) {
             defaults = UserDefaults(suiteName: suite)!
-            model = ControllerModel(keyStore: store, defaults: defaults, retryDelay: retryDelay)
+            model = ControllerModel(
+                keyStore: store, defaults: defaults, retryDelay: retryDelay,
+                errorDuration: errorDuration)
         }
 
         func cleanUp() {
@@ -154,6 +156,40 @@ import VirtualRemoteCore
         }
         #expect(sent == [.togglePlayPause])
         #expect(seeks == [640])
+    }
+
+    @Test func aFailedCommandShowsAFriendlyMessageThatFadesAway() async throws {
+        let rig = Rig(errorDuration: .milliseconds(300))
+        defer { rig.cleanUp() }
+        let receiver = try await LoopbackReceiver.start(info: nil)  // nothing playing
+        defer { receiver.server.stop() }
+        rig.store.keys["Test Mac"] = receiver.key
+        rig.model.select(receiver.discovered())
+        #expect(await eventually { rig.model.isConnected })
+
+        rig.model.send(.skip(seconds: 10))
+
+        #expect(await eventually { rig.model.lastError == "Nothing is playing." })
+        #expect(await eventually { rig.model.lastError == nil })
+    }
+
+    @Test func aNewerMessageIsNotClearedByTheOlderTimer() async throws {
+        let rig = Rig(errorDuration: .milliseconds(500))
+        defer { rig.cleanUp() }
+        let receiver = try await LoopbackReceiver.start(info: nil)
+        defer { receiver.server.stop() }
+        rig.store.keys["Test Mac"] = receiver.key
+        rig.model.select(receiver.discovered())
+        #expect(await eventually { rig.model.isConnected })
+
+        rig.model.send(.skip(seconds: 10))  // first message, expires 500 ms after it arrives
+        #expect(await eventually { rig.model.lastError != nil })
+        try await Task.sleep(for: .milliseconds(300))
+        rig.model.send(.skip(seconds: 10))  // second message restarts the timer
+        try await Task.sleep(for: .milliseconds(350))  // past the first timer, before the second
+
+        #expect(rig.model.lastError == "Nothing is playing.")
+        #expect(await eventually { rig.model.lastError == nil })
     }
 
     @Test func sendingWhileNotConnectedDoesNothing() async throws {

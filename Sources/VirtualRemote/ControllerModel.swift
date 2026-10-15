@@ -24,6 +24,10 @@ final class ControllerModel {
     private let defaults: UserDefaults
     /// Pause before the next automatic connect attempt.
     private let retryDelay: Duration
+    /// How long an error message stays on screen.
+    private let errorDuration: Duration
+    /// Identifies the message on screen, so an old timer never clears a newer one.
+    private var errorToken = UUID()
     private let lastReceiverKey = "lastReceiverName"
     private var client: RemoteClient?
     private var browseTask: Task<Void, Never>?
@@ -36,11 +40,25 @@ final class ControllerModel {
     init(
         keyStore: any KeyStoring = KeychainKeyStore(service: "org.kavaz.VirtualRemote"),
         defaults: UserDefaults = .standard,
-        retryDelay: Duration = .seconds(3)
+        retryDelay: Duration = .seconds(3),
+        errorDuration: Duration = .seconds(5)
     ) {
         self.keyStore = keyStore
         self.defaults = defaults
         self.retryDelay = retryDelay
+        self.errorDuration = errorDuration
+    }
+
+    /// Shows a message under the controls. It goes away by itself, and a newer
+    /// message replaces it and restarts the timer.
+    private func show(error text: String) {
+        lastError = text
+        let token = UUID()
+        errorToken = token
+        Task {
+            try? await Task.sleep(for: errorDuration)
+            if errorToken == token { lastError = nil }
+        }
     }
 
     var isConnected: Bool { connection == .connected }
@@ -144,7 +162,7 @@ final class ControllerModel {
         do {
             try keyStore.save(key, account: selected.name)
         } catch {
-            lastError = "Could not save key to Keychain: \(error.localizedDescription)"
+            show(error: "Could not save key to Keychain: \(error.localizedDescription)")
             return false
         }
         needsPairing = false
@@ -166,7 +184,7 @@ final class ControllerModel {
             do {
                 try await client.send(command)
             } catch {
-                lastError = error.localizedDescription
+                show(error: RemoteError.userMessage(for: error))
             }
         }
     }
@@ -244,7 +262,7 @@ final class ControllerModel {
     private func handle(_ message: RemoteMessage) {
         switch message {
         case .state(let s): state = s
-        case .error(let text): lastError = text
+        case .error(let text): show(error: text)
         case .artwork(let artwork):
             if artworkImages.count >= 16 { artworkImages.removeAll() }
             artworkImages[artwork.id] = NSImage(data: artwork.jpeg)

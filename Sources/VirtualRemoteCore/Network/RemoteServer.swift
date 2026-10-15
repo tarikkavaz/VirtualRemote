@@ -110,7 +110,7 @@ public final class RemoteServer: @unchecked Sendable {
                 do {
                     try await executor.execute(command)
                 } catch {
-                    try? await channel.send(.error(String(describing: error)))
+                    try? await channel.send(.error(RemoteError.userMessage(for: error)))
                 }
             }
             if ranCommand { await publish(force: true) }
