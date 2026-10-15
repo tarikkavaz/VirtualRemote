@@ -108,6 +108,8 @@ sh scripts/make-app.sh   # build build/VirtualRemote.app, including the adapter
 
 To regenerate the icons from `Resources/Icons`, run `swift scripts/make-icons.swift`.
 
+To try a build on this Mac and on a second Mac over ssh, run `scripts/deploy-dev.sh`. It builds and signs, checks the signature, then stops, copies, verifies and restarts the app on each Mac, and stops at the first failure. It needs `SIGN_IDENTITY` and, for the second Mac, an ssh host name in `REMOTE_HOST` (default `macmini`). Pass `local` or `remote` to deploy to only one of them. It does not notarize or publish anything.
+
 ### Release
 
 `scripts/release.sh` builds a universal, hardened, notarized app and writes `build/VirtualRemote-<version>.zip`. It needs a Developer ID Application certificate and a notarytool credential profile. Create the profile once, in a normal Terminal window:
