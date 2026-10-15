@@ -210,8 +210,11 @@ import Testing
         defer { rig.server.stop() }
         let client = RemoteClient(host: "127.0.0.1", port: rig.port, key: .generate())
         defer { client.close() }
-        await #expect(throws: (any Error).self) {
+        do {
             try await client.connect()
+            Issue.record("a wrong key must not connect")
+        } catch {
+            #expect(ConnectionFailure.classify(error) == .keyMismatch)
         }
         #expect(await rig.player.sent.isEmpty)
     }

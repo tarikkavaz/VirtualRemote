@@ -99,7 +99,8 @@ private struct ReceiverPicker: View {
         HStack {
             Image(systemName: model.selected?.kind.symbolName ?? MacKind.generic.symbolName)
             if model.receivers.isEmpty {
-                Text("Searching for receivers…").foregroundStyle(.secondary)
+                Text(model.searchGraceOver ? "No receivers found" : "Searching for receivers…")
+                    .foregroundStyle(.secondary)
             } else {
                 Picker("Receiver", selection: selection) {
                     Text("Choose…").tag(DiscoveredReceiver?.none)
@@ -113,9 +114,15 @@ private struct ReceiverPicker: View {
             }
             Spacer()
             Circle()
-                .fill(model.isConnected ? Color.green : Color.secondary.opacity(0.4))
+                .fill(dotColor)
                 .frame(width: 8, height: 8)
+                .help(model.isConnected ? "Connected" : model.isBusy ? "Connecting" : "Not connected")
         }
+    }
+
+    private var dotColor: Color {
+        if model.isConnected { return .green }
+        return model.isBusy ? .orange : Color.secondary.opacity(0.4)
     }
 
     private var selection: Binding<DiscoveredReceiver?> {
@@ -130,29 +137,77 @@ private struct StatusView: View {
     let model: ControllerModel
 
     var body: some View {
-        Group {
-            switch model.connection {
-            case .connecting: Text("Connecting…")
-            case .timedOut:
-                VStack(spacing: 6) {
-                    Text(
-                        "No answer after 10 s. Check that the receiver is running and that "
-                            + "VirtualRemote is allowed to use the local network."
-                    )
-                    .multilineTextAlignment(.center)
-                    Button("Open Local Network settings") { PrivacyLinks.openLocalNetwork() }
-                        .buttonStyle(.link)
-                        .pointerCursor()
-                }
-            case .failed(let reason): Text(reason)
-            case .idle:
-                Text(model.selected == nil ? "Pick a receiver." : "Not connected.")
-            case .connected: EmptyView()
+        switch model.status {
+        case .connected:
+            EmptyView()
+        case .needsReceiver:
+            StatusMessage(icon: "desktopcomputer", title: "Pick a receiver",
+                          detail: "Choose a Mac from the list above.")
+        case .searching(let name):
+            StatusMessage(spinner: true, title: "Looking for \(name ?? "receivers")…")
+        case .connecting(let name, let kind):
+            StatusMessage(icon: kind.symbolName, spinner: true, title: "Connecting to \(name)…")
+        case .lost(let name):
+            StatusMessage(spinner: true, title: "Connection to \(name) was lost",
+                          detail: "Reconnecting…")
+        case .notVisible(let name):
+            StatusMessage(
+                icon: "wifi.exclamationmark",
+                title: name.map { "\($0) isn't visible" } ?? "No receivers found",
+                detail: "Check that it is on and awake, on the same Wi-Fi, and that "
+                    + "VirtualRemote is running there.",
+                button: ("Try again", model.retry))
+        case .noAnswer(let name):
+            StatusMessage(
+                icon: "exclamationmark.triangle", title: "\(name) isn't answering",
+                detail: "It is on the network but not responding. Trying again automatically.",
+                button: ("Try again", model.retry))
+        case .keyMismatch(let name):
+            StatusMessage(
+                icon: "key", title: "The pairing key doesn't match",
+                detail: "The key on \(name) may have changed. Enter the current key from "
+                    + "its Settings > Modes.",
+                button: ("Enter key again", model.forgetSelected))
+        case .localNetworkDenied:
+            StatusMessage(
+                icon: "lock.shield", title: "Local network access is off",
+                detail: "Allow VirtualRemote in System Settings > Privacy & Security > "
+                    + "Local Network, then reopen the app.",
+                button: ("Open Local Network settings", PrivacyLinks.openLocalNetwork))
+        }
+    }
+}
+
+/// One status: an icon or spinner, a headline, one line of help, and at most one button.
+private struct StatusMessage: View {
+    var icon: String?
+    var spinner = false
+    let title: String
+    var detail: String?
+    var button: (title: String, action: () -> Void)?
+
+    var body: some View {
+        VStack(spacing: 6) {
+            if spinner {
+                ProgressView().controlSize(.small)
+            } else if let icon {
+                Image(systemName: icon).font(.title2).foregroundStyle(.secondary)
+            }
+            Text(title).font(.callout.weight(.semibold))
+            if let detail {
+                Text(detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if let button {
+                Button(button.title, action: button.action)
+                    .pointerCursor()
+                    .padding(.top, 2)
             }
         }
-        .font(.callout)
-        .foregroundStyle(.secondary)
-        .frame(maxWidth: .infinity, minHeight: 60)
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: .infinity, minHeight: 90)
     }
 }
 

@@ -6,18 +6,11 @@ import VirtualRemoteCore
 @MainActor
 @Observable
 final class ControllerModel {
-    enum Connection: Equatable {
-        case idle
-        case connecting
-        /// No answer within the connect timeout; often macOS blocking Local Network access.
-        case timedOut
-        case connected
-        case failed(String)
-    }
-
     private(set) var receivers: [DiscoveredReceiver] = []
     private(set) var selected: DiscoveredReceiver?
-    private(set) var connection: Connection = .idle
+    private(set) var connection: LinkState = .idle
+    /// The first search period is over, so "no receivers found" is a real answer.
+    private(set) var searchGraceOver = false
     private(set) var state: RemoteState?
     private(set) var lastError: String?
     var needsPairing = false
@@ -32,17 +25,69 @@ final class ControllerModel {
     private let lastReceiverKey = "lastReceiverName"
     private var client: RemoteClient?
     private var browseTask: Task<Void, Never>?
+    private var graceTask: Task<Void, Never>?
     private var connectionTask: Task<Void, Never>?
+    /// macOS refused local network access while browsing or connecting.
+    private var browserDenied = false
+    private var connectDenied = false
 
     var isConnected: Bool { connection == .connected }
 
+    /// What the popover tells the user about the connection.
+    var status: ControllerStatus {
+        let match = selected.flatMap { s in receivers.first { $0 == s } }
+        return ControllerStatus.derive(.init(
+            localNetworkDenied: browserDenied || connectDenied,
+            selectedName: selected?.name,
+            selectedKind: match?.kind ?? selected?.kind ?? .generic,
+            selectedVisible: match != nil,
+            link: connection,
+            rememberedName: AppSettings.autoConnect ? defaults.string(forKey: lastReceiverKey) : nil,
+            anyReceivers: !receivers.isEmpty,
+            searchGraceOver: searchGraceOver
+        ))
+    }
+
+    /// Something is in progress, so the status dot shows it.
+    var isBusy: Bool {
+        switch status {
+        case .searching, .connecting, .lost: true
+        default: false
+        }
+    }
+
     func startBrowsing() {
         guard browseTask == nil else { return }
+        searchGraceOver = false
+        graceTask?.cancel()
+        graceTask = Task {
+            try? await Task.sleep(for: .seconds(5))
+            if !Task.isCancelled { searchGraceOver = true }
+        }
         browseTask = Task {
-            for await list in ReceiverBrowser.results() {
-                receivers = list
-                autoSelectIfNeeded()
+            for await event in ReceiverBrowser.events() {
+                switch event {
+                case .receivers(let list):
+                    browserDenied = false
+                    receivers = list
+                    autoSelectIfNeeded()
+                case .localNetworkDenied:
+                    browserDenied = true
+                case .ready:
+                    browserDenied = false
+                }
             }
+        }
+    }
+
+    /// Searches again and reconnects now, instead of waiting for the next automatic try.
+    func retry() {
+        connectDenied = false
+        browseTask?.cancel()
+        browseTask = nil
+        startBrowsing()
+        if let selected, let key = keyStore.load(account: selected.name) {
+            connect(selected, key: key)
         }
     }
 
@@ -50,14 +95,20 @@ final class ControllerModel {
     func shutdown() {
         browseTask?.cancel()
         browseTask = nil
+        graceTask?.cancel()
+        graceTask = nil
         teardown()
         receivers = []
         selected = nil
         connection = .idle
         needsPairing = false
+        browserDenied = false
+        connectDenied = false
+        searchGraceOver = false
     }
 
     func select(_ receiver: DiscoveredReceiver) {
+        connectDenied = false
         selected = receiver
         defaults.set(receiver.name, forKey: lastReceiverKey)
         if let key = keyStore.load(account: receiver.name) {
@@ -111,32 +162,47 @@ final class ControllerModel {
         select(match)
     }
 
-    private func connect(_ receiver: DiscoveredReceiver, key: PairingKey) {
+    /// `isRetry` keeps the status of the failed attempt on screen while the next one
+    /// runs, so it does not flicker between "no answer" and "connecting".
+    private func connect(_ receiver: DiscoveredReceiver, key: PairingKey, isRetry: Bool = false) {
         teardown()
-        connection = .connecting
+        if !isRetry { connection = .connecting }
         let client = RemoteClient(endpoint: receiver.endpoint, key: key)
         self.client = client
         connectionTask = Task {
+            var wasConnected = false
             do {
                 try await Self.connect(client, timeout: .seconds(10))
+                wasConnected = true
                 connection = .connected
+                connectDenied = false
                 lastError = nil
                 for try await message in client.messages {
                     handle(message)
                 }
-                connection = .failed("Disconnected")
+                connection = .lost
             } catch is CancellationError {
                 return
             } catch is ConnectTimeout {
                 client.close()
-                connection = .timedOut
+                connection = .noAnswer
             } catch {
-                connection = .failed("Could not connect. Check the pairing key.")
+                switch ConnectionFailure.classify(error) {
+                case .localNetworkDenied:
+                    connectDenied = true
+                    connection = .noAnswer
+                case .keyMismatch where !wasConnected:
+                    connection = .keyMismatch
+                default:
+                    connection = wasConnected ? .lost : .noAnswer
+                }
             }
             state = nil
+            // Retrying cannot fix a wrong key. The user has to enter it again.
+            if connection == .keyMismatch { return }
             try? await Task.sleep(for: .seconds(3))
             if !Task.isCancelled, selected == receiver {
-                connect(receiver, key: key)
+                connect(receiver, key: key, isRetry: true)
             }
         }
     }

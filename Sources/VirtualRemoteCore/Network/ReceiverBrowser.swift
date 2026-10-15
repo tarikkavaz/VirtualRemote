@@ -25,10 +25,18 @@ public struct DiscoveredReceiver: Equatable, Hashable, Sendable {
     }
 }
 
+public enum BrowserEvent: Equatable, Sendable {
+    /// The full current list, each time it changes.
+    case receivers([DiscoveredReceiver])
+    /// macOS refuses local network access, so nothing can be found.
+    case localNetworkDenied
+    /// The browser works (again).
+    case ready
+}
+
 /// Finds receivers advertising `_virtualremote._tcp` on the LAN.
 public enum ReceiverBrowser {
-    /// Emits the full current list each time it changes.
-    public static func results() -> AsyncStream<[DiscoveredReceiver]> {
+    public static func events() -> AsyncStream<BrowserEvent> {
         AsyncStream { continuation in
             let browser = NWBrowser(
                 // The TXT variant is needed to receive each receiver's `kind`.
@@ -45,7 +53,19 @@ public enum ReceiverBrowser {
                     }
                     return DiscoveredReceiver(name: name, endpoint: result.endpoint, kind: kind)
                 }
-                continuation.yield(receivers.sorted { $0.name < $1.name })
+                continuation.yield(.receivers(receivers.sorted { $0.name < $1.name }))
+            }
+            browser.stateUpdateHandler = { state in
+                switch state {
+                case .ready:
+                    continuation.yield(.ready)
+                case .waiting(let error), .failed(let error):
+                    if ConnectionFailure.classify(error) == .localNetworkDenied {
+                        continuation.yield(.localNetworkDenied)
+                    }
+                default:
+                    break
+                }
             }
             browser.start(queue: DispatchQueue(label: "virtualremote.browser"))
             continuation.onTermination = { _ in browser.cancel() }
