@@ -142,4 +142,4 @@ This is an early release (0.2.0). Launch at login, sleep and wake of the receive
 
 ## License
 
-No license has been chosen for VirtualRemote itself yet.
+VirtualRemote is released under the [MIT License](LICENSE). The libraries it uses keep their own licenses, listed under Credits.
