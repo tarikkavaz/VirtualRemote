@@ -105,11 +105,36 @@ import Testing
         #expect(await player.seeks.isEmpty)
     }
 
-    @Test func seekWorksWithoutAKnownDuration() async throws {
-        let live = NowPlayingInfo(bundleIdentifier: "com.apple.Safari", playing: true)
+    @Test func aLiveStreamWithAnElapsedTimeCannotSkipOrSeek() async {
+        // What Arc reports for a YouTube live stream: an elapsed time, no duration.
+        // Skipping from that position jumped far behind the live edge.
+        let live = NowPlayingInfo(
+            bundleIdentifier: "company.thebrowser.Browser", playing: true,
+            elapsedTime: 9.2, playbackRate: 1, timestamp: t0)
         let (exec, player, _) = make(info: live)
-        try await exec.execute(.seek(to: 30))
-        #expect(await player.seeks == [30])
+        await #expect(throws: RemoteError.positionUnavailable) {
+            try await exec.execute(.skip(seconds: 20))
+        }
+        await #expect(throws: RemoteError.positionUnavailable) {
+            try await exec.execute(.seek(to: 30))
+        }
+        #expect(await player.seeks.isEmpty)
+    }
+
+    @Test(arguments: [0.0, -5.0])
+    func aZeroOrNegativeDurationCannotSeek(duration: Double) async {
+        let odd = playing(elapsed: 10, duration: duration)
+        let (exec, player, _) = make(info: odd)
+        await #expect(throws: RemoteError.positionUnavailable) {
+            try await exec.execute(.seek(to: 5))
+        }
+        #expect(await player.seeks.isEmpty)
+    }
+
+    @Test func seekableMeansAPositiveDuration() {
+        #expect(playing(elapsed: 1, duration: 60).isSeekable)
+        #expect(playing(elapsed: 1, duration: 0).isSeekable == false)
+        #expect(NowPlayingInfo(bundleIdentifier: "x", playing: true).isSeekable == false)
     }
 
     @Test func volumeIsClamped() async throws {

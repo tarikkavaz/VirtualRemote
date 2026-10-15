@@ -65,6 +65,11 @@ public struct NowPlayingInfo: Codable, Equatable, Sendable {
         self.timestamp = timestamp
     }
 
+    /// False for live streams and anything else without a known length. Such a
+    /// player may report an elapsed time, but it is not a position that skipping
+    /// or seeking can use: skipping a live stream jumps far behind the live edge.
+    public var isSeekable: Bool { (duration ?? 0) > 0 }
+
     /// Elapsed seconds now. `elapsedTime` is a sample taken at `timestamp`,
     /// so while playing we add the time since the sample.
     public func estimatedElapsed(at now: Date) -> Double? {
@@ -142,7 +147,7 @@ public enum RemoteMessage: Codable, Equatable, Sendable {
 
 public enum RemoteError: Error, Equatable {
     case noActivePlayer
-    /// A player is active but reports no position (a live stream, for example).
+    /// A player is active but has no known length or position (a live stream, for example).
     case positionUnavailable
     case processFailed(executable: String, status: Int32)
     case invalidAdapterOutput
@@ -154,7 +159,7 @@ extension RemoteError: LocalizedError {
         case .noActivePlayer:
             "Nothing is playing."
         case .positionUnavailable:
-            "This player does not report a position, so it cannot skip or seek."
+            "This is a live stream or has no known length, so it cannot skip or seek."
         case .processFailed(let executable, let status):
             "The media helper (\(URL(fileURLWithPath: executable).lastPathComponent)) failed with status \(status)."
         case .invalidAdapterOutput:

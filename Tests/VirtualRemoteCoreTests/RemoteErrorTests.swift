@@ -6,7 +6,7 @@ import Testing
     @Test func everyErrorHasAReadableMessage() {
         let cases: [(RemoteError, String)] = [
             (.noActivePlayer, "Nothing is playing."),
-            (.positionUnavailable, "This player does not report a position, so it cannot skip or seek."),
+            (.positionUnavailable, "This is a live stream or has no known length, so it cannot skip or seek."),
             (.processFailed(executable: "/usr/bin/perl", status: 1),
              "The media helper (perl) failed with status 1."),
             (.invalidAdapterOutput, "Could not read the media state."),

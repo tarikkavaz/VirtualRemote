@@ -487,8 +487,18 @@ private struct TransportView: View {
         Button { model.send(.skip(seconds: Double(seconds))) } label: {
             SkipSymbol(seconds: seconds)
         }
-        .pointerCursor()
-        .help("\(seconds > 0 ? "Forward" : "Back") \(abs(seconds)) seconds")
+        .disabled(!canSkip)
+        .pointerCursor(enabled: canSkip)
+        .help(
+            canSkip
+                ? "\(seconds > 0 ? "Forward" : "Back") \(abs(seconds)) seconds"
+                : "Skipping is not available for live streams or media of unknown length")
+    }
+
+    /// A live stream, or anything without a known length, cannot skip. With nothing
+    /// playing the buttons stay on, so a press explains why nothing happens.
+    private var canSkip: Bool {
+        model.state?.nowPlaying?.isSeekable ?? true
     }
 }
 

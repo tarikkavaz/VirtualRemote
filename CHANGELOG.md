@@ -8,11 +8,14 @@ for every release before running `scripts/release.sh`.
 
 ### Fixed
 
+- Skipping on a live stream (for example YouTube live) jumped far behind the live
+  edge, because a live stream reports an elapsed time but no length. Skip and seek
+  are now refused for any player without a known length, and the skip buttons are
+  greyed out for it.
 - A failed command showed raw text such as `noActivePlayer` or
   `processFailed(executable: ...)`. It now shows a plain sentence, for example
-  "Nothing is playing." or "This player does not report a position, so it cannot
-  skip or seek." (the second one is for live streams, which used to report the
-  wrong cause).
+  "Nothing is playing." or "This is a live stream or has no known length, so it
+  cannot skip or seek."
 - An error message stayed on screen until the next reconnect. It now disappears after
   5 seconds, and a newer message replaces it.
 - Stopping the receiver right after starting it (for example by switching the mode)
