@@ -26,7 +26,11 @@ enum TLSConfig {
         )
         let tcp = NWProtocolTCP.Options()
         tcp.enableKeepalive = true
-        tcp.keepaliveIdle = 30
+        // Detect a silent peer (sleeping Mac, dropped Wi-Fi) in about 15 s:
+        // 5 s idle, then 3 probes 3 s apart.
+        tcp.keepaliveIdle = 5
+        tcp.keepaliveInterval = 3
+        tcp.keepaliveCount = 3
         return NWParameters(tls: tls, tcp: tcp)
     }
 }
