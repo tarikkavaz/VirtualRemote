@@ -137,6 +137,7 @@ This is an early release (0.1.1). Launch at login, sleep and wake of the receive
 
 - [mediaremote-adapter](https://github.com/ungive/mediaremote-adapter) by Jonas van den Berg and contributors, BSD 3-Clause. A copy of its license is inside the app bundle.
 - [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts) by Sindre Sorhus, MIT.
+- The GitHub logo in the About section is the mark from [Octicons](https://github.com/primer/octicons) by GitHub, MIT.
 
 ## License
 

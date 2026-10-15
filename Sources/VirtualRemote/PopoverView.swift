@@ -16,6 +16,7 @@ struct PopoverView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Button("Pairing key…") { open(.modes) }
                     .buttonStyle(.link)
+                    .pointerCursor()
                     .font(.caption)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -47,6 +48,7 @@ struct PopoverView: View {
     ) -> some View {
         Button(action: action) { Image(systemName: symbol) }
             .buttonStyle(.plain)
+            .pointerCursor()
             .help(help)
     }
 
@@ -105,6 +107,7 @@ private struct ReceiverPicker: View {
                     }
                 }
                 .labelsHidden()
+                .pointerCursor()
             }
             Spacer()
             Circle()
@@ -137,6 +140,7 @@ private struct StatusView: View {
                     .multilineTextAlignment(.center)
                     Button("Open Local Network settings") { PrivacyLinks.openLocalNetwork() }
                         .buttonStyle(.link)
+                        .pointerCursor()
                 }
             case .failed(let reason): Text(reason)
             case .idle:
@@ -168,6 +172,7 @@ private struct PairingForm: View {
             }
             Button("Pair", action: submit)
                 .keyboardShortcut(.defaultAction)
+                .pointerCursor()
             Text("macOS may ask for access to your Keychain. Choose Always Allow so it does not ask again.")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
@@ -303,17 +308,21 @@ private struct TransportView: View {
                         .font(.system(size: 26))
                         .frame(width: 44, height: 44)
                 }
+                .pointerCursor()
                 skip(skipShort)
                 skip(skipLong)
             }
             HStack(spacing: 32) {
                 Button { model.send(.previous) } label: { Image(systemName: "backward.fill") }
+                    .pointerCursor()
                     .help("Previous")
                 if supportsStop {
                     Button { model.send(.stop) } label: { Image(systemName: "stop.fill") }
+                        .pointerCursor()
                         .help("Stop")
                 }
                 Button { model.send(.next) } label: { Image(systemName: "forward.fill") }
+                    .pointerCursor()
                     .help("Next")
             }
         }
@@ -331,6 +340,7 @@ private struct TransportView: View {
         Button { model.send(.skip(seconds: Double(seconds))) } label: {
             SkipSymbol(seconds: seconds)
         }
+        .pointerCursor()
         .help("\(seconds > 0 ? "Forward" : "Back") \(abs(seconds)) seconds")
     }
 }
@@ -364,10 +374,12 @@ private struct VolumeView: View {
                 Image(systemName: icon).frame(width: 20)
             }
             .buttonStyle(.plain)
+            .pointerCursor()
             Slider(value: $level, in: 0...1) { editing in
                 dragging = editing
                 if !editing { model.send(.setVolume(level)) }  // final value
             }
+            .pointerCursor()
             .onChange(of: level) { _, new in
                 // At most ~12 updates per second while dragging.
                 guard dragging, Date().timeIntervalSince(lastSent) > 0.08 else { return }

@@ -38,29 +38,72 @@ private struct GeneralTab: View {
         Form {
             Section("Startup") {
                 Toggle("Launch at login", isOn: loginBinding)
+                    .pointerCursor()
                 if let error = app.launchAtLoginError {
                     Text(error).font(.caption).foregroundStyle(.red)
                 }
                 Toggle("Connect to the last receiver automatically", isOn: $autoConnect)
+                    .pointerCursor()
             }
             Section("Controls") {
-                Stepper(
-                    "Volume step for shortcuts: \(volumeStep) %",
-                    value: $volumeStep, in: AppSettings.Range.volumeStepPercent)
-                Stepper(
-                    "Short skip: \(skipShort) s",
-                    value: $skipShort, in: AppSettings.Range.skipSeconds)
-                Stepper(
-                    "Long skip: \(skipLong) s",
-                    value: $skipLong, in: AppSettings.Range.skipSeconds)
+                stepperRow(
+                    "Volume step for shortcuts", valueText: "\(volumeStep) %",
+                    value: $volumeStep, range: AppSettings.Range.volumeStepPercent)
+                stepperRow(
+                    "Short skip", valueText: "\(skipShort) s",
+                    value: $skipShort, range: AppSettings.Range.skipSeconds)
+                stepperRow(
+                    "Long skip", valueText: "\(skipLong) s",
+                    value: $skipLong, range: AppSettings.Range.skipSeconds)
             }
             Section("About") {
-                LabeledContent("Version", value: version)
+                HStack(spacing: 12) {
+                    Image(nsImage: Bundle.main.image(forResource: "AboutIcon") ?? NSApp.applicationIconImage)
+                        .resizable()
+                        .interpolation(.high)
+                        .scaledToFit()
+                        .frame(height: 56)
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(alignment: .firstTextBaseline, spacing: 6) {
+                            Text("VirtualRemote").font(.headline)
+                            Text("v \(version)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Link("by Tarık Kavaz", destination: URL(string: "https://tarik.kavaz.org")!)
+                            .pointerCursor()
+                    }
+                    Spacer()
+                    Link(destination: URL(string: "https://github.com/tarikkavaz/VirtualRemote")!) {
+                        if let mark = GitHubMark.image {
+                            Image(nsImage: mark)
+                        } else {
+                            Image(systemName: "chevron.left.forwardslash.chevron.right")
+                        }
+                    }
+                    .pointerCursor()
+                    .help("Source on GitHub")
+                    .accessibilityLabel("Source on GitHub")
+                }
                 LabeledContent("Media adapter", value: adapterCommit)
-                Link("Source on GitHub", destination: URL(string: "https://github.com/tarikkavaz/VirtualRemote")!)
             }
         }
         .formStyle(.grouped)
+    }
+
+    /// A label, the current value, and a stepper. The pointer cursor is on the
+    /// stepper only, not on the label.
+    private func stepperRow(
+        _ title: String, valueText: String, value: Binding<Int>, range: ClosedRange<Int>
+    ) -> some View {
+        LabeledContent(title) {
+            HStack(spacing: 8) {
+                Text(valueText).monospacedDigit()
+                Stepper("", value: value, in: range)
+                    .labelsHidden()
+                    .pointerCursor()
+            }
+        }
     }
 
     private var version: String {
@@ -108,6 +151,7 @@ private struct ModesTab: View {
                 }
                 .pickerStyle(.radioGroup)
                 .labelsHidden()
+                .pointerCursor()
                 Text(modeExplanation)
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -147,6 +191,7 @@ struct ReceiverSection: View {
                 PrivacyLinks.openLocalNetwork()
             }
             .buttonStyle(.link)
+            .pointerCursor()
             .font(.caption)
         }
         Section("Receiver pairing key") {
@@ -162,8 +207,10 @@ struct ReceiverSection: View {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(model.key.displayString, forType: .string)
                 }
+                .pointerCursor()
             }
             Button("New key…", role: .destructive) { confirmNewKey = true }
+                .pointerCursor()
             if let warning = model.keychainWarning {
                 Text(warning).font(.caption).foregroundStyle(.orange)
             }
@@ -194,9 +241,11 @@ private struct ControllerKeySection: View {
                 }
                 HStack {
                     Button("Save key", action: save)
+                        .pointerCursor()
                         .disabled(text.trimmingCharacters(in: .whitespaces).isEmpty)
                     Spacer()
                     Button("Forget key", role: .destructive) { model.forgetSelected() }
+                        .pointerCursor()
                 }
                 Text("macOS may ask for access to your Keychain. Choose Always Allow so it does not ask again.")
                     .font(.caption)
