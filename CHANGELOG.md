@@ -4,7 +4,9 @@ All notable changes to VirtualRemote are listed here, newest first. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Add an entry
 for every release before running `scripts/release.sh`.
 
-## [Unreleased]
+## [0.2.3] - 2026-10-16
+
+Compatible with 0.2.0 and newer.
 
 ### Fixed
 

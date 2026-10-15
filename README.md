@@ -136,7 +136,7 @@ SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" sh scripts/release.
 
 See the [changelog](CHANGELOG.md) for what changed in each version.
 
-This is an early release (0.2.2). Launch at login, sleep and wake of the receiver, Wi-Fi drops, receiver restarts, two controllers at once, live streams and an idle receiver are tested. The things we have not been able to check are a first launch on a Mac that never ran the app and the Intel half of the universal build.
+This is an early release (0.2.3). Launch at login, sleep and wake of the receiver, Wi-Fi drops, receiver restarts, two controllers at once, live streams, long and missing titles, and an idle receiver are tested. The things we have not been able to check are a first launch on a Mac that never ran the app and the Intel half of the universal build.
 
 ## Credits
 
