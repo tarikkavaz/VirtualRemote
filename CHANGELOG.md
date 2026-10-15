@@ -6,6 +6,12 @@ for every release before running `scripts/release.sh`.
 
 ## [Unreleased]
 
+### Changed
+
+- With nothing playing, play, pause, next, previous and stop are refused with
+  "Nothing is playing." Before, pressing play made macOS launch Apple Music. A
+  paused or idle player still counts as a session, so play still resumes it.
+
 ### Fixed
 
 - Skipping on a live stream (for example YouTube live) jumped far behind the live

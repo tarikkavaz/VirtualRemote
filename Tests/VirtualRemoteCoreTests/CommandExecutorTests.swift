@@ -27,8 +27,36 @@ import Testing
         return (CommandExecutor(player: player, volume: volume, now: { now }), player, volume)
     }
 
-    @Test func transportCommandsMapToMediaCommands() async throws {
+    @Test(arguments: [
+        RemoteCommand.play, .pause, .togglePlayPause, .stop, .next, .previous,
+    ])
+    func transportIsRefusedWhenNothingIsPlaying(command: RemoteCommand) async {
+        // macOS would send "play" to Apple Music and launch it. A remote must not.
         let (exec, player, _) = make(info: nil)
+        await #expect(throws: RemoteError.noActivePlayer) {
+            try await exec.execute(command)
+        }
+        #expect(await player.sent.isEmpty)
+    }
+
+    @Test func aPausedOrIdleSessionCanStillBeResumed() async throws {
+        let idle = NowPlayingInfo(bundleIdentifier: "com.spotify.client", playing: false)
+        let (exec, player, _) = make(info: idle)
+        try await exec.execute(.play)
+        try await exec.execute(.next)
+        #expect(await player.sent == [.play, .next])
+    }
+
+    @Test func volumeStillWorksWhenNothingIsPlaying() async throws {
+        let (exec, _, volume) = make(info: nil, level: 0.4)
+        try await exec.execute(.setVolume(0.7))
+        try await exec.execute(.setMuted(true))
+        #expect(await volume.level == 0.7)
+        #expect(await volume.muted)
+    }
+
+    @Test func transportCommandsMapToMediaCommands() async throws {
+        let (exec, player, _) = make(info: playing(elapsed: 10))
         try await exec.execute(.play)
         try await exec.execute(.pause)
         try await exec.execute(.togglePlayPause)

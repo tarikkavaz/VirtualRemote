@@ -18,12 +18,12 @@ public actor CommandExecutor {
 
     public func execute(_ command: RemoteCommand) async throws {
         switch command {
-        case .play: try await player.send(.play)
-        case .pause: try await player.send(.pause)
-        case .togglePlayPause: try await player.send(.togglePlayPause)
-        case .stop: try await player.send(.stop)
-        case .next: try await player.send(.next)
-        case .previous: try await player.send(.previous)
+        case .play: try await transport(.play)
+        case .pause: try await transport(.pause)
+        case .togglePlayPause: try await transport(.togglePlayPause)
+        case .stop: try await transport(.stop)
+        case .next: try await transport(.next)
+        case .previous: try await transport(.previous)
         case .skip(let seconds): try await skip(by: seconds)
         case .seek(let seconds): try await seek(to: seconds)
         case .setVolume(let value):
@@ -46,6 +46,15 @@ public actor CommandExecutor {
         return try await RemoteState(
             nowPlaying: nowPlaying, volume: level ?? 0, muted: isMuted ?? false,
             volumeAvailable: level != nil)
+    }
+
+    /// Sends a transport command only when macOS has a Now Playing session. With
+    /// none, macOS would hand "play" to Apple Music and launch it, which a remote
+    /// should not do on its own. A paused or idle session still counts, so a press
+    /// can resume it.
+    private func transport(_ command: MediaCommand) async throws {
+        guard try await player.nowPlaying() != nil else { throw RemoteError.noActivePlayer }
+        try await player.send(command)
     }
 
     private func skip(by seconds: Double) async throws {
