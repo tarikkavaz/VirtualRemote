@@ -19,7 +19,7 @@ It controls whatever macOS lists as "Now Playing" on the other Mac. We tested Pl
 ## Requirements
 
 - macOS 14 or newer on both Macs.
-- Both Macs on the same local network, running the same version of VirtualRemote. Versions before 0.2.0 do not work with 0.2.0.
+- Both Macs on the same local network, running the same version of VirtualRemote. Versions before 0.2.0 do not work with 0.2.0 or newer.
 - Apple Silicon or Intel. The release is a universal build. It has only been tested on Apple Silicon Macs running macOS 27.
 
 ## Install
@@ -132,7 +132,7 @@ SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" sh scripts/release.
 
 ## Status
 
-This is an early release (0.2.0). Launch at login, sleep and wake of the receiver, Wi-Fi drops and receiver restarts are tested. The things we have not been able to check are a first launch on a Mac that never ran the app and the Intel half of the universal build.
+This is an early release (0.2.1). Launch at login, sleep and wake of the receiver, Wi-Fi drops and receiver restarts are tested. The things we have not been able to check are a first launch on a Mac that never ran the app and the Intel half of the universal build.
 
 ## Credits
 

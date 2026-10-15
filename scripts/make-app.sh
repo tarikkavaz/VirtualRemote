@@ -49,6 +49,9 @@ cp Resources/AppIcon.icns Resources/MenuBarIcon.png "Resources/MenuBarIcon@2x.pn
     Resources/GitHubMark.png "Resources/GitHubMark@2x.png" Resources/AboutIcon.png "Resources/AboutIcon@2x.png" \
     "$APP/Contents/Resources/"
 
+# licenses: ours, and the notices MIT requires to travel with copies of KeyboardShortcuts and Octicons
+cp LICENSE Resources/ThirdPartyLicenses.txt "$APP/Contents/Resources/"
+
 # SwiftPM resource bundles (e.g. KeyboardShortcuts strings)
 for bundle in "$BIN_DIR"/*.bundle; do
     [ -e "$bundle" ] && cp -R "$bundle" "$APP/Contents/Resources/"
