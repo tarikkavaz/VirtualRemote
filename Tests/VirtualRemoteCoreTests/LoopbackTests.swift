@@ -22,14 +22,16 @@ import Testing
         let key: PairingKey
     }
 
-    private func startServer(key: PairingKey = .generate()) async throws -> Rig {
+    /// `icon` is what the receiver "finds" for any player; nil means the app is not installed.
+    private func startServer(key: PairingKey = .generate(), icon: AppIcon? = nil) async throws -> Rig {
         let player = FakePlayer(info: info)
         let volume = FakeVolume(level: 0.4)
         let server = RemoteServer(
             executor: CommandExecutor(player: player, volume: volume),
             key: key,
             advertise: false,
-            pollInterval: .milliseconds(50)
+            pollInterval: .milliseconds(50),
+            iconLoader: { _ in icon }
         )
         let port = try await server.start()
         return Rig(server: server, port: port, player: player, volume: volume, key: key)
@@ -133,6 +135,53 @@ import Testing
             if case .state(let s) = message, s.volume == 0.9 { return }
         }
         Issue.record("stream ended early")
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func appIconArrivesOnceBeforeState() async throws {
+        let icon = AppIcon(
+            bundleIdentifier: "tv.plex.desktop", name: "Plex", png: makePNG(width: 64, height: 64))
+        let rig = try await startServer(icon: icon)
+        defer { rig.server.stop() }
+        let client = RemoteClient(host: "127.0.0.1", port: rig.port, key: rig.key)
+        defer { client.close() }
+        try await client.connect()
+        var it = client.messages.makeAsyncIterator()
+
+        guard case .appIcon(let received) = try await it.next() else {
+            Issue.record("icon must come first")
+            return
+        }
+        #expect(received == icon)
+        guard case .state = try await it.next() else {
+            Issue.record("state must follow the icon")
+            return
+        }
+
+        // A later state change must not resend the same icon.
+        await rig.volume.setLevelForTest(0.9)
+        while let message = try await it.next() {
+            if case .appIcon = message {
+                Issue.record("icon was sent twice")
+                return
+            }
+            if case .state(let s) = message, s.volume == 0.9 { return }
+        }
+        Issue.record("stream ended early")
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func missingIconSendsOnlyState() async throws {
+        let rig = try await startServer(icon: nil)
+        defer { rig.server.stop() }
+        let client = RemoteClient(host: "127.0.0.1", port: rig.port, key: rig.key)
+        defer { client.close() }
+        try await client.connect()
+        var it = client.messages.makeAsyncIterator()
+        guard case .state = try await it.next() else {
+            Issue.record("expected state first when no icon is available")
+            return
+        }
     }
 
     @Test(.timeLimit(.minutes(1)))

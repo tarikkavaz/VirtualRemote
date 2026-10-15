@@ -97,10 +97,25 @@ public struct Artwork: Codable, Equatable, Sendable {
     }
 }
 
+/// The player app's name and a small PNG icon, read on the receiver and sent
+/// once per controller before the state that references the app.
+public struct AppIcon: Codable, Equatable, Sendable {
+    public var bundleIdentifier: String
+    public var name: String
+    public var png: Data
+
+    public init(bundleIdentifier: String, name: String, png: Data) {
+        self.bundleIdentifier = bundleIdentifier
+        self.name = name
+        self.png = png
+    }
+}
+
 public enum RemoteMessage: Codable, Equatable, Sendable {
     case command(RemoteCommand)
     case state(RemoteState)
     case artwork(Artwork)
+    case appIcon(AppIcon)
     /// Receiver could not run a command.
     case error(String)
 }

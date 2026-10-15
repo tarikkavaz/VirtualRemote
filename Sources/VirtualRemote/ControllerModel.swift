@@ -23,6 +23,9 @@ final class ControllerModel {
     var needsPairing = false
     /// Thumbnails by id, as sent by the receiver.
     private(set) var artworkImages: [String: NSImage] = [:]
+    /// Player app icons and names by bundle id, as sent by the receiver.
+    private(set) var appIcons: [String: NSImage] = [:]
+    private(set) var appNames: [String: String] = [:]
 
     private let keyStore = KeychainKeyStore(service: "org.kavaz.VirtualRemote")
     private let defaults = UserDefaults.standard
@@ -162,6 +165,9 @@ final class ControllerModel {
         case .artwork(let artwork):
             if artworkImages.count >= 16 { artworkImages.removeAll() }
             artworkImages[artwork.id] = NSImage(data: artwork.jpeg)
+        case .appIcon(let icon):
+            appIcons[icon.bundleIdentifier] = NSImage(data: icon.png)
+            appNames[icon.bundleIdentifier] = icon.name
         case .command: break
         }
     }

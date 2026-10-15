@@ -69,7 +69,9 @@ private struct ControllerSection: View {
             } else if model.isConnected {
                 NowPlayingView(
                     info: model.state?.nowPlaying,
-                    artwork: model.state?.nowPlaying?.artworkID.flatMap { model.artworkImages[$0] }
+                    artwork: model.state?.nowPlaying?.artworkID.flatMap { model.artworkImages[$0] },
+                    appIcon: model.state?.nowPlaying.flatMap { model.appIcons[$0.bundleIdentifier] },
+                    appName: model.state?.nowPlaying.flatMap { model.appNames[$0.bundleIdentifier] }
                 )
                 Divider()
                 TransportView(model: model)
@@ -181,6 +183,10 @@ private struct PairingForm: View {
 private struct NowPlayingView: View {
     let info: NowPlayingInfo?
     let artwork: NSImage?
+    /// Icon and name of the player app, read on the receiver. Nil until it arrives
+    /// or when the receiver could not read them.
+    let appIcon: NSImage?
+    let appName: String?
 
     var body: some View {
         VStack(spacing: 6) {
@@ -199,10 +205,17 @@ private struct NowPlayingView: View {
                             .lineLimit(2)
                             .multilineTextAlignment(.leading)
                             .fixedSize(horizontal: false, vertical: true)
-                        Text(subtitle(info))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
+                        HStack(spacing: 4) {
+                            if let artist = info.artist, !artist.isEmpty {
+                                Text(artist + " ·").lineLimit(1)
+                            }
+                            playerIcon
+                            Text(appName ?? fallbackName(info.bundleIdentifier))
+                                .lineLimit(1)
+                                .layoutPriority(1)
+                        }
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -224,14 +237,19 @@ private struct NowPlayingView: View {
         .padding(.vertical, 8)
     }
 
-    private func subtitle(_ info: NowPlayingInfo) -> String {
-        [info.artist, appName(info.bundleIdentifier)]
-            .compactMap { $0 }
-            .filter { !$0.isEmpty }
-            .joined(separator: " · ")
+    @ViewBuilder private var playerIcon: some View {
+        if let appIcon {
+            Image(nsImage: appIcon)
+                .resizable()
+                .frame(width: 14, height: 14)
+        } else {
+            Image(systemName: "app.dashed")
+                .frame(width: 14, height: 14)
+        }
     }
 
-    private func appName(_ bundleID: String) -> String {
+    /// Used until the receiver's own name for the app arrives.
+    private func fallbackName(_ bundleID: String) -> String {
         let known = [
             "tv.plex.desktop": "Plex",
             "company.thebrowser.Browser": "Arc",

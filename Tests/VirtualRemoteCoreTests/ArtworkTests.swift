@@ -68,6 +68,39 @@ private func pixelSize(of data: Data) -> (Int, Int)? {
     }
 }
 
+@Suite struct AppIconProviderTests {
+    @Test func finderIconIsAPngWithAName() throws {
+        let icon = try #require(AppIconProvider.load(bundleIdentifier: "com.apple.finder"))
+        #expect(icon.name == "Finder")
+        let size = try #require(pixelSize(of: icon.png))
+        #expect(size.0 == 64 && size.1 == 64)
+    }
+
+    @Test func unknownAppGivesNil() {
+        #expect(AppIconProvider.load(bundleIdentifier: "org.example.not-installed") == nil)
+    }
+
+    @Test func cacheRemembersHitsAndMisses() async {
+        let counter = LoadCounter()
+        let cache = AppIconCache(loader: { id in
+            counter.increment()
+            return id == "yes" ? AppIcon(bundleIdentifier: id, name: "Yes", png: Data([1])) : nil
+        })
+        #expect(await cache.icon(for: "yes")?.name == "Yes")
+        #expect(await cache.icon(for: "yes")?.name == "Yes")
+        #expect(await cache.icon(for: "no") == nil)
+        #expect(await cache.icon(for: "no") == nil)
+        #expect(counter.count == 2)
+    }
+}
+
+private final class LoadCounter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value = 0
+    var count: Int { lock.withLock { value } }
+    func increment() { lock.withLock { value += 1 } }
+}
+
 @Suite struct ArtworkParsingTests {
     @Test func adapterArtworkIsDecodedFromBase64() throws {
         let bytes = Data([1, 2, 3, 4])

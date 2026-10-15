@@ -11,6 +11,7 @@ public final class RemoteServer: @unchecked Sendable {
     private let pollInterval: Duration
     private let registry = ClientRegistry()
     private let artworkCache = ArtworkCache()
+    private let iconCache: AppIconCache
     private let queue = DispatchQueue(label: "virtualremote.server")
     private let lock = NSLock()
     private var listener: NWListener?
@@ -21,8 +22,10 @@ public final class RemoteServer: @unchecked Sendable {
         key: PairingKey,
         serviceName: String = Host.current().localizedName ?? "Mac",
         advertise: Bool = true,
-        pollInterval: Duration = .seconds(1)
+        pollInterval: Duration = .seconds(1),
+        iconLoader: @escaping @Sendable (String) -> AppIcon? = { AppIconProvider.load(bundleIdentifier: $0) }
     ) {
+        self.iconCache = AppIconCache(loader: iconLoader)
         self.executor = executor
         self.key = key
         self.serviceName = serviceName
@@ -79,8 +82,8 @@ public final class RemoteServer: @unchecked Sendable {
             return  // handshake failed: wrong key or dropped connection
         }
         let id = await registry.add(channel)
-        if let (state, artwork) = await snapshot() {
-            await registry.deliver(to: id, state: state, artwork: artwork)
+        if let snap = await snapshot() {
+            await registry.deliver(to: id, snap)
         }
         // Reader and runner are separate so reading never waits on slow
         // commands, and queued volume changes can be merged.
@@ -112,8 +115,9 @@ public final class RemoteServer: @unchecked Sendable {
         channel.close()
     }
 
-    /// Current state with the raw image replaced by a thumbnail id, plus the thumbnail.
-    private func snapshot() async -> (RemoteState, Artwork?)? {
+    /// Current state with the raw image replaced by a thumbnail id, plus the thumbnail
+    /// and the player's icon.
+    private func snapshot() async -> Snapshot? {
         guard var state = try? await executor.currentState() else { return nil }
         var artwork: Artwork?
         if let raw = state.nowPlaying?.artworkData {
@@ -121,12 +125,16 @@ public final class RemoteServer: @unchecked Sendable {
             state.nowPlaying?.artworkID = artwork?.id
         }
         state.nowPlaying?.artworkData = nil
-        return (state, artwork)
+        var icon: AppIcon?
+        if let bundleID = state.nowPlaying?.bundleIdentifier {
+            icon = await iconCache.icon(for: bundleID)
+        }
+        return Snapshot(state: state, artwork: artwork, icon: icon)
     }
 
     private func publish(force: Bool) async {
-        guard let (state, artwork) = await snapshot() else { return }
-        await registry.broadcast(state, artwork: artwork, force: force)
+        guard let snap = await snapshot() else { return }
+        await registry.broadcast(snap, force: force)
     }
 
     private func pollLoop() async {
@@ -139,10 +147,17 @@ public final class RemoteServer: @unchecked Sendable {
     }
 }
 
+struct Snapshot {
+    var state: RemoteState
+    var artwork: Artwork?
+    var icon: AppIcon?
+}
+
 actor ClientRegistry {
     private struct Client {
         let channel: SecureChannel
         var sentArtwork: Set<String> = []
+        var sentIcons: Set<String> = []
     }
 
     private var clients: [UUID: Client] = [:]
@@ -161,22 +176,27 @@ actor ClientRegistry {
         if clients.isEmpty { last = nil }
     }
 
-    func broadcast(_ state: RemoteState, artwork: Artwork?, force: Bool) async {
-        guard force || state != last else { return }
-        last = state
+    func broadcast(_ snap: Snapshot, force: Bool) async {
+        guard force || snap.state != last else { return }
+        last = snap.state
         for id in Array(clients.keys) {
-            await deliver(to: id, state: state, artwork: artwork)
+            await deliver(to: id, snap)
         }
     }
 
-    /// Sends the thumbnail first if this controller has not got it yet, then the state.
-    func deliver(to id: UUID, state: RemoteState, artwork: Artwork?) async {
+    /// Sends the thumbnail and the app icon first if this controller has not got
+    /// them yet, then the state.
+    func deliver(to id: UUID, _ snap: Snapshot) async {
         guard let client = clients[id] else { return }
-        if let artwork, !client.sentArtwork.contains(artwork.id) {
+        if let artwork = snap.artwork, !client.sentArtwork.contains(artwork.id) {
             try? await client.channel.send(.artwork(artwork))
             clients[id]?.sentArtwork.insert(artwork.id)
         }
-        try? await client.channel.send(.state(state))
+        if let icon = snap.icon, !client.sentIcons.contains(icon.bundleIdentifier) {
+            try? await client.channel.send(.appIcon(icon))
+            clients[id]?.sentIcons.insert(icon.bundleIdentifier)
+        }
+        try? await client.channel.send(.state(snap.state))
     }
 
     func closeAll() {
