@@ -317,15 +317,7 @@ private struct NowPlayingView: View {
 
     /// Used until the receiver's own name for the app arrives.
     private func fallbackName(_ bundleID: String) -> String {
-        let known = [
-            "tv.plex.desktop": "Plex",
-            "company.thebrowser.Browser": "Arc",
-            "com.google.Chrome": "Chrome",
-            "com.apple.Safari": "Safari",
-            "org.mozilla.firefox": "Firefox",
-            "com.spotify.client": "Spotify",
-        ]
-        return known[bundleID] ?? bundleID
+        PlayerNames.fallback(for: bundleID)
     }
 }
 
@@ -424,19 +416,15 @@ private struct Progress: View {
     }
 
     private func fraction(_ seconds: Double) -> CGFloat {
-        CGFloat(min(max(seconds / max(duration, 1), 0), 1))
+        SeekBar.fraction(of: seconds, in: duration)
     }
 
     private func time(at x: CGFloat, width: CGFloat) -> Double {
-        Double(min(max(x / width, 0), 1)) * duration
+        SeekBar.time(atX: x, width: width, duration: duration)
     }
 
     private func format(_ seconds: Double) -> String {
-        let total = Int(max(0, seconds))
-        let (h, m, s) = (total / 3600, total % 3600 / 60, total % 60)
-        return h > 0
-            ? String(format: "%d:%02d:%02d", h, m, s)
-            : String(format: "%d:%02d", m, s)
+        SeekBar.clock(seconds)
     }
 }
 

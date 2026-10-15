@@ -26,6 +26,10 @@ final class ControllerModel {
     private let retryDelay: Duration
     /// How long an error message stays on screen.
     private let errorDuration: Duration
+    /// Where discovery events come from: Bonjour in the app, a test stream in tests.
+    private let browse: () -> AsyncStream<BrowserEvent>
+    /// How long the first search runs before "not found" counts as an answer.
+    private let searchGrace: Duration
     /// Identifies the message on screen, so an old timer never clears a newer one.
     private var errorToken = UUID()
     private let lastReceiverKey = "lastReceiverName"
@@ -41,12 +45,16 @@ final class ControllerModel {
         keyStore: any KeyStoring = KeychainKeyStore(service: "org.kavaz.VirtualRemote"),
         defaults: UserDefaults = .standard,
         retryDelay: Duration = .seconds(3),
-        errorDuration: Duration = .seconds(5)
+        errorDuration: Duration = .seconds(5),
+        searchGrace: Duration = .seconds(5),
+        browse: @escaping () -> AsyncStream<BrowserEvent> = { ReceiverBrowser.events() }
     ) {
         self.keyStore = keyStore
         self.defaults = defaults
         self.retryDelay = retryDelay
         self.errorDuration = errorDuration
+        self.searchGrace = searchGrace
+        self.browse = browse
     }
 
     /// Shows a message under the controls. It goes away by itself, and a newer
@@ -91,11 +99,11 @@ final class ControllerModel {
         searchGraceOver = false
         graceTask?.cancel()
         graceTask = Task {
-            try? await Task.sleep(for: .seconds(5))
+            try? await Task.sleep(for: searchGrace)
             if !Task.isCancelled { searchGraceOver = true }
         }
         browseTask = Task {
-            for await event in ReceiverBrowser.events() {
+            for await event in browse() {
                 switch event {
                 case .receivers(let list):
                     browserDenied = false
