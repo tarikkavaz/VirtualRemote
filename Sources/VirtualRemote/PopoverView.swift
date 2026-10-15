@@ -97,14 +97,15 @@ private struct ReceiverPicker: View {
 
     var body: some View {
         HStack {
-            Image(systemName: "desktopcomputer")
+            Image(systemName: model.selected?.kind.symbolName ?? MacKind.generic.symbolName)
             if model.receivers.isEmpty {
                 Text("Searching for receivers…").foregroundStyle(.secondary)
             } else {
                 Picker("Receiver", selection: selection) {
                     Text("Choose…").tag(DiscoveredReceiver?.none)
                     ForEach(model.receivers, id: \.self) { receiver in
-                        Text(receiver.name).tag(DiscoveredReceiver?.some(receiver))
+                        Label(receiver.name, systemImage: receiver.kind.symbolName)
+                            .tag(DiscoveredReceiver?.some(receiver))
                     }
                 }
                 .labelsHidden()
@@ -193,9 +194,9 @@ private struct NowPlayingView: View {
     /// or when the receiver could not read them.
     let appIcon: NSImage?
     let appName: String?
-
     /// Called with an absolute position in seconds when the progress bar is clicked or dragged.
     let onSeek: (Double) -> Void
+
     var body: some View {
         VStack(spacing: 6) {
             if let info {
@@ -274,7 +275,6 @@ private struct NowPlayingView: View {
 private struct Progress: View {
     let elapsed: Double
     let duration: Double
-
     let onSeek: (Double) -> Void
 
     @State private var hoverX: CGFloat?
@@ -288,6 +288,7 @@ private struct Progress: View {
     private let hitHeight: CGFloat = 16
 
     private var shown: Double { scrub ?? min(max(elapsed, 0), duration) }
+
     var body: some View {
         VStack(spacing: 2) {
             bar
@@ -301,7 +302,6 @@ private struct Progress: View {
         }
     }
 
-    private func format(_ seconds: Double) -> String {
     private var bar: some View {
         GeometryReader { geo in
             let width = max(geo.size.width, 1)
@@ -374,6 +374,7 @@ private struct Progress: View {
         Double(min(max(x / width, 0), 1)) * duration
     }
 
+    private func format(_ seconds: Double) -> String {
         let total = Int(max(0, seconds))
         let (h, m, s) = (total / 3600, total % 3600 / 60, total % 60)
         return h > 0
@@ -438,6 +439,8 @@ private struct SkipSymbol: View {
     let seconds: Int
 
     var body: some View {
+        // The system symbols with a built-in number are too small to read here, so
+        // every length uses the plain arrow with our own larger number.
         let magnitude = abs(seconds)
         let direction = seconds > 0 ? "goforward" : "gobackward"
         Image(systemName: direction)
@@ -488,5 +491,3 @@ private struct VolumeView: View {
         return level < 0.5 ? "speaker.wave.1.fill" : "speaker.wave.3.fill"
     }
 }
-        // The system symbols with a built-in number are too small to read here, so
-        // every length uses the plain arrow with our own larger number.

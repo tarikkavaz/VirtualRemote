@@ -49,7 +49,8 @@ final class ReceiverModel {
                 player: AdapterNowPlayingBackend(paths: paths),
                 volume: OsascriptVolumeBackend()
             )
-            let server = RemoteServer(executor: executor, key: key, serviceName: name)
+            let server = RemoteServer(
+                executor: executor, key: key, serviceName: name, kind: await MacKind.detect())
             do {
                 let port = try await server.start()
                 if Task.isCancelled {

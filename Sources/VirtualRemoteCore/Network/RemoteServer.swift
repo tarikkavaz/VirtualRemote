@@ -7,6 +7,7 @@ public final class RemoteServer: @unchecked Sendable {
     private let executor: CommandExecutor
     private let key: PairingKey
     private let serviceName: String
+    private let kind: MacKind
     private let advertise: Bool
     private let pollInterval: Duration
     private let registry = ClientRegistry()
@@ -21,6 +22,7 @@ public final class RemoteServer: @unchecked Sendable {
         executor: CommandExecutor,
         key: PairingKey,
         serviceName: String = Host.current().localizedName ?? "Mac",
+        kind: MacKind = .generic,
         advertise: Bool = true,
         pollInterval: Duration = .seconds(1),
         iconLoader: @escaping @Sendable (String) -> AppIcon? = { AppIconProvider.load(bundleIdentifier: $0) }
@@ -29,6 +31,7 @@ public final class RemoteServer: @unchecked Sendable {
         self.executor = executor
         self.key = key
         self.serviceName = serviceName
+        self.kind = kind
         self.advertise = advertise
         self.pollInterval = pollInterval
     }
@@ -37,7 +40,9 @@ public final class RemoteServer: @unchecked Sendable {
     public func start() async throws -> UInt16 {
         let listener = try NWListener(using: TLSConfig.parameters(key: key))
         if advertise {
-            listener.service = NWListener.Service(name: serviceName, type: TLSConfig.serviceType)
+            listener.service = NWListener.Service(
+                name: serviceName, type: TLSConfig.serviceType, domain: nil,
+                txtRecord: NWTXTRecord([MacKind.txtKey: kind.rawValue]))
         }
         listener.newConnectionHandler = { [self] connection in
             Task { await serve(SecureChannel(connection: connection)) }
