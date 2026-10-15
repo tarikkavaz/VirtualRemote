@@ -4,6 +4,8 @@ All notable changes to VirtualRemote are listed here, newest first. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Add an entry
 for every release before running `scripts/release.sh`.
 
+## [Unreleased]
+
 ## [0.2.3] - 2026-10-16
 
 Compatible with 0.2.0 and newer.
@@ -12,6 +14,16 @@ Compatible with 0.2.0 and newer.
 
 - Switching the mode quickly (for example Receiver off and on again) could start the
   receiver twice, because a cancelled start cleared the record of the newer one.
+
+### Internal
+
+- 40 more tests for the app: discovery fed by a controllable stream, the receiver's
+  real start sequence with a fake adapter, mode switching and launch at login, and
+  the pure view logic (clock format, seek bar math, player names). This took the
+  suite to 178 tests (73 for the app, 105 for the core library).
+- Small injection points so those tests need no real Bonjour, adapter or login item:
+  an event source for the controller, an environment for the receiver, and a login
+  item service for the app model. Behavior is unchanged.
 
 ## [0.2.2] - 2026-10-16
 
@@ -39,6 +51,15 @@ Compatible with 0.2.0 and 0.2.1. The receiver does the refusing, so a Mac runnin
 - Stopping the receiver right after starting it (for example by switching the mode)
   could leave a stale error such as "The media adapter is missing" on the stopped
   receiver. A start that was cancelled no longer writes to the status.
+
+### Internal
+
+- Tests for the app itself (33 at first): the controller model against a real
+  receiver on localhost, the receiver model, the Keychain store, settings and the
+  hotkey list.
+- `scripts/deploy-dev.sh` builds a signed dev copy and installs it on this Mac and a
+  second Mac over ssh, stopping at the first failure. `scripts/release.sh` now also
+  stops when `CHANGELOG.md` has no entry for the version.
 
 ## [0.2.1] - 2026-10-15
 
