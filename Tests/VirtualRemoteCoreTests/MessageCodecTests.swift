@@ -33,6 +33,22 @@ import Testing
         #expect(decoded == message)
     }
 
+    @Test func volumeAvailableSurvivesTheWire() throws {
+        let state = RemoteState(nowPlaying: nil, volume: 0, muted: false, volumeAvailable: false)
+        let data = try MessageCodec.encode(.state(state))
+        #expect(try MessageCodec.decode(data.dropLast()) == .state(state))
+    }
+
+    @Test func stateFromAnOlderReceiverDecodesAsVolumeAvailable() throws {
+        let old = Data(#"{"state":{"_0":{"volume":0.4,"muted":false}}}"#.utf8)
+        guard case .state(let state) = try MessageCodec.decode(old) else {
+            Issue.record("expected a state message")
+            return
+        }
+        #expect(state.volumeAvailable)
+        #expect(state.volume == 0.4)
+    }
+
     @Test func encodedMessageIsSingleLine() throws {
         let data = try MessageCodec.encode(.command(.skip(seconds: 20)))
         let text = String(decoding: data, as: UTF8.self)

@@ -80,11 +80,29 @@ public struct RemoteState: Codable, Equatable, Sendable {
     public var nowPlaying: NowPlayingInfo?
     public var volume: Double
     public var muted: Bool
+    /// False when the receiver's output has no software volume or mute (HDMI,
+    /// DisplayPort), so controllers should hide the volume controls.
+    public var volumeAvailable: Bool
 
-    public init(nowPlaying: NowPlayingInfo?, volume: Double, muted: Bool) {
+    public init(nowPlaying: NowPlayingInfo?, volume: Double, muted: Bool, volumeAvailable: Bool = true) {
         self.nowPlaying = nowPlaying
         self.volume = volume
         self.muted = muted
+        self.volumeAvailable = volumeAvailable
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case nowPlaying, volume, muted, volumeAvailable
+    }
+
+    // `volumeAvailable` is optional on the wire so states from receivers that
+    // predate it still decode.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        nowPlaying = try c.decodeIfPresent(NowPlayingInfo.self, forKey: .nowPlaying)
+        volume = try c.decode(Double.self, forKey: .volume)
+        muted = try c.decode(Bool.self, forKey: .muted)
+        volumeAvailable = try c.decodeIfPresent(Bool.self, forKey: .volumeAvailable) ?? true
     }
 }
 

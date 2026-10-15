@@ -13,6 +13,14 @@ actor FakePlayer: NowPlayingBackend {
     func seek(to seconds: Double) async throws { seeks.append(seconds) }
 }
 
+/// An output without software volume: every read fails, like HDMI or DisplayPort.
+struct NoVolume: VolumeBackend {
+    func volume() async throws -> Double { throw RemoteError.invalidAdapterOutput }
+    func setVolume(_ value: Double) async throws {}
+    func isMuted() async throws -> Bool { throw RemoteError.invalidAdapterOutput }
+    func setMuted(_ muted: Bool) async throws {}
+}
+
 actor FakeVolume: VolumeBackend {
     var level: Double
     var muted: Bool

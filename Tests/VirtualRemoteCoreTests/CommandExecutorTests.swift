@@ -123,6 +123,21 @@ import Testing
         #expect(await volume.muted)
     }
 
+    @Test func stateStillArrivesWhenTheOutputHasNoVolume() async throws {
+        let info = playing(elapsed: 100)
+        let exec = CommandExecutor(player: FakePlayer(info: info), volume: NoVolume())
+        let state = try await exec.currentState()
+        #expect(state.nowPlaying == info)
+        #expect(state.volumeAvailable == false)
+        #expect(state.volume == 0)
+        #expect(state.muted == false)
+    }
+
+    @Test func stateReportsVolumeAsAvailableNormally() async throws {
+        let (exec, _, _) = make(info: playing(elapsed: 1), level: 0.3)
+        #expect(try await exec.currentState().volumeAvailable)
+    }
+
     @Test func currentStateCombinesBackends() async throws {
         let info = playing(elapsed: 10)
         let (exec, _, _) = make(info: info, level: 0.41)

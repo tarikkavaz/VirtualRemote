@@ -78,7 +78,9 @@ private struct ControllerSection: View {
                 )
                 Divider()
                 TransportView(model: model)
-                VolumeView(model: model)
+                if model.state?.volumeAvailable ?? true {
+                    VolumeView(model: model)
+                }
             } else {
                 StatusView(model: model)
             }

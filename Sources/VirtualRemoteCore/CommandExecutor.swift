@@ -38,9 +38,14 @@ public actor CommandExecutor {
 
     public func currentState() async throws -> RemoteState {
         async let nowPlaying = player.nowPlaying()
-        async let volume = volumeBackend.volume()
-        async let muted = volumeBackend.isMuted()
-        return try await RemoteState(nowPlaying: nowPlaying, volume: volume, muted: muted)
+        // An output without software volume (HDMI, DisplayPort) cannot report one.
+        // That must not stop the now-playing state from reaching controllers.
+        async let volume: Double? = try? volumeBackend.volume()
+        async let muted: Bool? = try? volumeBackend.isMuted()
+        let (level, isMuted) = await (volume, muted)
+        return try await RemoteState(
+            nowPlaying: nowPlaying, volume: level ?? 0, muted: isMuted ?? false,
+            volumeAvailable: level != nil)
     }
 
     private func skip(by seconds: Double) async throws {
